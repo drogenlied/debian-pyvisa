@@ -10,12 +10,16 @@ override_dh_auto_clean:
 
 override_dh_auto_build:
 	dh_auto_build
-	python3 setup.py build
+	set -ex; for python in $(shell py3versions -r); do \
+		$$python setup.py build; \
+	done
 
 override_dh_auto_install:
 	dh_auto_install
-	python3 setup.py install --install-layout=deb \
-	   --root $(CURDIR)/debian/tmp
+	set -ex; for python in $(shell py3versions -r); do \
+		$$python setup.py install --install-layout=deb \
+		--root $(CURDIR)/debian/tmp; \
+	done;
 
 override_dh_installchangelogs:
 	dh_installchangelogs -k CHANGES
