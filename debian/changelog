@@ -11,7 +11,10 @@ pyvisa (1.6.3-1) experimental; urgency=low
   * debian/copyright:
     - Added new copyright holders
     - Changed source URL
-  * debian/rules: Added override_dh_auto_clean to properly clean
+  * debian/rules:
+    - Added override_dh_auto_clean to properly clean
+    - Install CHANGES as upstream changelog since it
+      is the newest
   * debian/watch: Changed URL (upstream has changed)
   * Added debian/gbp.conf to enable pristine-tar build
   * Added debian/docs and debian/install for installing docs

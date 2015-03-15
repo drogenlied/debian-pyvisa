@@ -7,3 +7,5 @@ override_dh_auto_clean:
 	$(RM) -r PyVISA.egg-info
 	dh_auto_clean
 
+override_dh_installchangelogs:
+	dh_installchangelogs -k CHANGES
