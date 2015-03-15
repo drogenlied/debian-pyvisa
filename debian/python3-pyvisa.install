@@ -1,0 +1,3 @@
+usr/lib/python3*/
+docs/*.rst usr/share/doc/python3-pyvisa/manual/rst
+docs/api/*.rst usr/share/doc/python3-pyvisa/manual/rst/api
