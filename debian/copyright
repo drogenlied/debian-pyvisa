@@ -3,9 +3,11 @@ Upstream-Name: pyvisa
 Source: https://github.com/hgrecco/pyvisa
 
 Files: *
-Copyright: 2005-2014 PyVISA Authors and contributors, see AUTHORS for more details
+Copyright: 2005-2014 PyVISA Authors and contributors
            2005, 2006, 2007, 2008 Torsten Bronger <bronger@physik.rwth-aachen.de>
            2005, 2006, 2007, 2008 Gregor Thalhammer <gth@users.sourceforge.net>
+           2012, 2013 Florian Bauer
+           ? Hernan E. Grecco <hernan.grecco@gmail.com>
 License: MIT
 
 Files: docs/default.css
