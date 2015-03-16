@@ -1,3 +1,25 @@
+pyvisa (1.6.3-2) experimental; urgency=low
+
+  * Added python3 binary: python3-pyvisa
+  * Renamed pyvisa binary to python-pyvisa
+  * debian/copyright:
+    - Added copyright year and comment for Hernan E. Grecco
+  * debian/control:
+    - Added everything needed for building python3 binary as well
+      as python2 binary.
+    - Cleaned up Build-Depends list
+    - Section: python, Priority: optional
+    - python-pyvisa "provides" pyvisa to provide backwards compatibility
+  * debian/rules:
+    - Added --with python3 and --buildsystem=python_distutils
+    - More in override_dh_auto_clean to properly clean up
+    - override_dh_auto_build and override_dh_auto_install for building
+      python3 binary correctly.
+  * docs --> python-pyvisa.docs and python3-pyvisa.docs
+  * install --> python-pyvisa.install and python3-pyvisa.install
+
+ -- Ruben Undheim <ruben.undheim@gmail.com>  Mon, 16 Mar 2015 19:11:37 +0100
+
 pyvisa (1.6.3-1) experimental; urgency=low
 
   * New upstream release (Closes: 775767)
