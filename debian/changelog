@@ -9,14 +9,16 @@ pyvisa (1.6.3-2) experimental; urgency=low
       as python2 binary.
     - Cleaned up Build-Depends list
     - Section: python, Priority: optional
-    - python-pyvisa "provides" pyvisa to provide backwards compatibility
+    - python-pyvisa "replaces" and "breaks" pyvisa to provide backwards
+      compatibility
+    - pyvisa transitional dummy package added
+  * debian/docs --> python-pyvisa.docs and python3-pyvisa.docs
+  * debian/install --> python-pyvisa.install and python3-pyvisa.install
   * debian/rules:
     - Added --with python3 and --buildsystem=python_distutils
     - More in override_dh_auto_clean to properly clean up
     - override_dh_auto_build and override_dh_auto_install for building
       python3 binary correctly.
-  * docs --> python-pyvisa.docs and python3-pyvisa.docs
-  * install --> python-pyvisa.install and python3-pyvisa.install
 
  -- Ruben Undheim <ruben.undheim@gmail.com>  Mon, 16 Mar 2015 19:11:37 +0100
 
