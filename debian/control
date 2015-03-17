@@ -16,10 +16,18 @@ Vcs-Browser: https://anonscm.debian.org/cgit/python-modules/packages/pyvisa.git
 Vcs-Git: git://anonscm.debian.org/python-modules/packages/pyvisa.git
 Homepage: http://pyvisa.sourceforge.net/
 
+Package: pyvisa
+Depends: python-pyvisa, ${misc:Depends}
+Architecture: all
+Priority: extra
+Description: transitional dummy package
+ This is a transitional dummy package. It can safely be removed.
+
 Package: python-pyvisa
 Architecture: all
 Depends: libvisa0, ${python:Depends}, ${misc:Depends}
-Provides: pyvisa
+Replaces: pyvisa (<< 1.6.3-2)
+Breaks: pyvisa (<< 1.6.3-2)
 Description: Python bindings for Virtual Instrument Software Architecture
  The VISA standard provides a common interface for communication with test
  and measurement equipment.
