@@ -1,3 +1,11 @@
+pyvisa (1.6.3-4) unstable; urgency=medium
+
+  * d/control:
+    - Added missing install dependencies: python-pkg-resources and
+      python3-pkg-resources
+
+ -- Ruben Undheim <ruben.undheim@gmail.com>  Thu, 28 May 2015 22:45:17 +0200
+
 pyvisa (1.6.3-3) unstable; urgency=low
 
   * Uploaded to unstable

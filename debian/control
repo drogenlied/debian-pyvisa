@@ -25,7 +25,7 @@ Description: transitional dummy package
 
 Package: python-pyvisa
 Architecture: all
-Depends: libvisa0, ${python:Depends}, ${misc:Depends}
+Depends: libvisa0, python-pkg-resources, ${python:Depends}, ${misc:Depends}
 Replaces: pyvisa (<< 1.6.3-2)
 Breaks: pyvisa (<< 1.6.3-2)
 Description: Python bindings for Virtual Instrument Software Architecture
@@ -36,7 +36,7 @@ Description: Python bindings for Virtual Instrument Software Architecture
 
 Package: python3-pyvisa
 Architecture: all
-Depends: libvisa0, ${python3:Depends}, ${misc:Depends}
+Depends: libvisa0, python3-pkg-resources, ${python3:Depends}, ${misc:Depends}
 Description: Python3 bindings for Virtual Instrument Software Architecture
  The VISA standard provides a common interface for communication with test
  and measurement equipment.
