@@ -20,7 +20,8 @@ Package: pyvisa
 Depends: python-pyvisa, ${misc:Depends}
 Architecture: all
 Priority: extra
-Description: transitional dummy package
+Section: oldlibs
+Description: Transitional dummy package for python-pyvisa
  This is a transitional dummy package. It can safely be removed.
 
 Package: python-pyvisa

@@ -23,7 +23,8 @@ License: BSD-3-clause
 
 Files: pyvisa/compat/check_output.py
        pyvisa/compat/nullhandler.py
-Copyright: 2013 PSF
+       pyvisa/compat/struct.py
+Copyright: 2013, 2015 PSF
 License: PSF
 
 Files: pyvisa/compat/ordereddict.py
