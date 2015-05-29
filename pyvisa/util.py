@@ -18,26 +18,11 @@ import io
 import os
 import platform
 import sys
-import struct
 import subprocess
 import warnings
 
-from .compat import check_output, string_types, OrderedDict
+from .compat import check_output, string_types, OrderedDict, struct
 from . import __version__, logger
-
-if sys.version >= '3':
-    _struct_unpack = struct.unpack
-    _struct_unpack_from = struct.unpack_from
-    _struct_pack = struct.pack
-else:
-    def _struct_unpack(fmt, string):
-        return struct.unpack(str(fmt), string)
-
-    def _struct_unpack_from(fmt, *args, **kwargs):
-        return struct.unpack_from(str(fmt), *args, **kwargs)
-
-    def _struct_pack(fmt, *values):
-        return struct.pack(str(fmt), *values)
 
 
 def read_user_library_path():
@@ -192,7 +177,7 @@ def from_ascii_block(ascii_data, converter='f', separator=',', container=list):
     else:
         data = separator(ascii_data)
 
-    return container(converter(raw_value) for raw_value in data)
+    return container([converter(raw_value) for raw_value in data])
 
 
 def to_ascii_block(iterable, converter='f', separator=','):
@@ -264,11 +249,52 @@ def parse_binary(bytes_data, is_big_endian=False, is_single=False):
         else:
             fmt = endianess + str(data_length // 8) + 'd'
 
-        result = list(_struct_unpack(fmt, data))
+        result = list(struct.unpack(fmt, data))
     except struct.error:
         raise ValueError("Binary data itself was malformed")
 
     return result
+
+
+def parse_ieee_block_header(block):
+    """Parse the header of a IEEE block.
+
+    Definite Length Arbitrary Block:
+    #<header_length><data_length><data>
+
+    The header_length specifies the size of the data_length field.
+    And the data_length field specifies the size of the data.
+
+    Indefinite Length Arbitrary Block:
+    #0<data>
+
+    :param block: IEEE block.
+    :type block: bytes
+    :return: (offset, data_length)
+    :rtype: (int, int)
+    """
+    begin = block.find(b'#')
+    if begin < 0:
+        raise ValueError("Could not find hash sign (#) indicating the start of the block.")
+
+    try:
+        # int(block[begin+1]) != int(block[begin+1:begin+2]) in Python 3
+        header_length = int(block[begin+1:begin+2])
+    except ValueError:
+        header_length = 0
+
+    offset = begin + 2 + header_length
+
+    if header_length > 0:
+        # #3100DATA
+        # 012345
+        data_length = int(block[begin+2:offset])
+    else:
+        # #0DATA
+        # 012
+        data_length = len(block) - offset - 1
+
+    return offset, data_length
 
 
 def from_ieee_block(block, datatype='f', is_big_endian=False, container=list):
@@ -292,26 +318,11 @@ def from_ieee_block(block, datatype='f', is_big_endian=False, container=list):
     :rtype: type(container)
     """
 
-    begin = block.find(b'#')
-    if begin < 0:
-        raise ValueError("Could not find hash sign (#) indicating the start of the block.")
+    offset, data_length = parse_ieee_block_header(block)
 
-    try:
-        # int(block[begin+1]) != int(block[begin+1:begin+2]) in Python 3
-        header_length = int(block[begin+1:begin+2])
-    except ValueError:
-        header_length = 0
-
-    offset = begin + 2 + header_length
-
-    if header_length > 0:
-        # #3100DATA
-        # 012345
-        data_length = int(block[begin+2:offset])
-    else:
-        # #0DATA
-        # 012
-        data_length = len(block) - offset - 1
+    if len(block) < offset + data_length:
+        raise ValueError("Binary data is incomplete. The header states %d data bytes, "
+                         "but %d where received." % (data_length, len(block) - offset))
 
     return from_binary_block(block, offset, data_length, datatype, is_big_endian, container)
 
@@ -341,7 +352,7 @@ def from_binary_block(block, offset=0, data_length=None, datatype='f', is_big_en
     fullfmt = '%s%d%s' % (endianess, array_length, datatype)
 
     try:
-        return container(_struct_unpack_from(fullfmt, block, offset))
+        return container(struct.unpack_from(fullfmt, block, offset))
     except struct.error:
         raise ValueError("Binary data was malformed")
 
@@ -357,18 +368,19 @@ def to_ieee_block(iterable, datatype='f', is_big_endian=False):
     """
 
     array_length = len(iterable)
-    header = '%d' % array_length
-
-    endianess = '>' if is_big_endian else '<'
-
     element_length = struct.calcsize(datatype)
     data_length = array_length * element_length
+
+    header = '%d' % data_length
+    header = '#%d%s'%(len(header),header)
+
+    endianess = '>' if is_big_endian else '<'
     fullfmt = '%s%d%s' % (endianess, array_length, datatype)
 
     if sys.version >= '3':
-        return bytes('#%d%d' % (len(header), data_length), 'ascii') + _struct_pack(fullfmt, *iterable)
+        return bytes(header, 'ascii') + struct.pack(fullfmt, *iterable)
     else:
-        return str('#%d%d' % (len(header), data_length)) + _struct_pack(fullfmt, *iterable)
+        return str(header) + struct.pack(fullfmt, *iterable)
 
 
 def get_system_details(backends=True):
@@ -535,7 +547,7 @@ def get_shared_library_arch(filename):
         dos_headers = fp.read(64)
         _ = fp.read(4)
 
-        magic, skip, offset = _struct_unpack(str('2s58sl'), dos_headers)
+        magic, skip, offset = struct.unpack(str('2s58sl'), dos_headers)
 
         if magic != b'MZ':
             raise Exception('Not an executable')
@@ -543,7 +555,7 @@ def get_shared_library_arch(filename):
         fp.seek(offset, io.SEEK_SET)
         pe_header = fp.read(6)
 
-        sig, skip, machine = _struct_unpack(str('2s2sH'), pe_header)
+        sig, skip, machine = struct.unpack(str('2s2sH'), pe_header)
 
         if sig != b'PE':
             raise Exception('Not a PE executable')

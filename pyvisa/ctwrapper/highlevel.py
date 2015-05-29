@@ -13,6 +13,7 @@
 
 from __future__ import division, unicode_literals, print_function, absolute_import
 
+import logging
 import warnings
 
 from pyvisa import constants, errors, highlevel, logger
@@ -20,6 +21,9 @@ from pyvisa.compat import integer_types, OrderedDict
 
 from .cthelper import Library, find_library
 from . import functions
+
+
+logger = logging.LoggerAdapter(logger, {'backend': 'ni'})
 
 
 def add_visa_methods(aclass):
@@ -134,6 +138,10 @@ class NIVisaLibrary(highlevel.VisaLibraryBase):
         # name of the functions.
         functions.set_signatures(self.lib, errcheck=self._return_handler)
 
+        logger.debug('Library signatures: %d ok, %d failed',
+                     len(getattr(self.lib, '_functions', [])),
+                     len(getattr(self.lib, '_functions_failed', [])))
+
         # Set the library functions as attributes of the object.
         for method_name in getattr(self.lib, '_functions', []):
             setattr(self, method_name, getattr(self.lib, method_name))
@@ -185,4 +193,26 @@ class NIVisaLibrary(highlevel.VisaLibraryBase):
 
         return ret_value
 
+    def list_resources(self, session, query='?*::INSTR'):
+        """Returns a tuple of all connected devices matching query.
+
+        :param query: regular expression used to match devices.
+        """
+
+        resources = []
+
+        try:
+            find_list, return_counter, instrument_description, err = self.find_resources(session, query)
+        except errors.VisaIOError as e:
+            if e.error_code == constants.StatusCode.error_resource_not_found:
+                return tuple()
+            raise e
+
+        resources.append(instrument_description)
+        for i in range(return_counter - 1):
+            resources.append(self.find_next(find_list)[0])
+
+        self.close(find_list)
+
+        return tuple(resource for resource in resources)
 

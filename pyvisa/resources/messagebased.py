@@ -20,7 +20,7 @@ import warnings
 from .. import logger
 from .. import constants
 from .. import errors
-from ..util import from_ascii_block, parse_binary, from_ieee_block, to_ieee_block, to_ascii_block, from_binary_block
+from .. import util
 
 from .resource import Resource
 
@@ -137,6 +137,9 @@ class MessageBasedResource(Resource):
             self.set_visa_attribute(constants.VI_ATTR_TERMCHAR, ord(last_char))
             self.set_visa_attribute(constants.VI_ATTR_TERMCHAR_EN, constants.VI_TRUE)
         else:
+            # The termchar is also used in VI_ATTR_ASRL_END_IN (for serial termination)
+            # so return it to its default.
+            self.set_visa_attribute(constants.VI_ATTR_TERMCHAR, ord(self.LF))
             self.set_visa_attribute(constants.VI_ATTR_TERMCHAR_EN, constants.VI_FALSE)
 
         self._read_termination = value
@@ -211,7 +214,7 @@ class MessageBasedResource(Resource):
                 warnings.warn("write message already ends with "
                               "termination characters", stacklevel=2)
 
-        block = to_ascii_block(values, converter, separator)
+        block = util.to_ascii_block(values, converter, separator)
 
         message = message.encode(enco) + block
 
@@ -242,7 +245,7 @@ class MessageBasedResource(Resource):
                 warnings.warn("write message already ends with "
                               "termination characters", stacklevel=2)
 
-        block = to_ieee_block(values, datatype, is_big_endian)
+        block = util.to_ieee_block(values, datatype, is_big_endian)
 
         message = message.encode(enco) + block
 
@@ -274,7 +277,7 @@ class MessageBasedResource(Resource):
         loop_status = constants.StatusCode.success_max_count_read
 
         ret = bytes()
-        with self.ignore_warning(constants.VI_SUCCESS_DEV_NPRESENT):
+        with self.ignore_warning(constants.VI_SUCCESS_DEV_NPRESENT, constants.VI_SUCCESS_MAX_CNT):
             try:
                 status = loop_status
                 while status == loop_status:
@@ -335,10 +338,10 @@ class MessageBasedResource(Resource):
         if not fmt:
             vf = self.values_format
             if not vf.is_binary:
-                return from_ascii_block(self.read(), container)
+                return util.from_ascii_block(self.read(), container)
             data = self.read_raw()
             try:
-                return parse_binary(data, vf.is_big_endian, vf.datatype=='f')
+                return util.parse_binary(data, vf.is_big_endian, vf.datatype=='f')
             except ValueError as e:
                 try:
                     msg = e.args[0]
@@ -347,7 +350,7 @@ class MessageBasedResource(Resource):
                 raise errors.InvalidBinaryFormat(msg)
 
         if fmt & 0x01 == 0: # ascii
-            return from_ascii_block(self.read())
+            return util.from_ascii_block(self.read())
 
         data = self.read_raw()
 
@@ -360,7 +363,7 @@ class MessageBasedResource(Resource):
                 raise ValueError("unknown data values fmt requested")
 
             is_big_endian = fmt & 0x04 # big endian
-            return parse_binary(data, is_big_endian, is_single)
+            return util.parse_binary(data, is_big_endian, is_single)
         except ValueError as e:
             raise errors.InvalidBinaryFormat(e.args)
 
@@ -431,7 +434,7 @@ class MessageBasedResource(Resource):
 
         block = self.read()
 
-        return from_ascii_block(block, converter, separator, container)
+        return util.from_ascii_block(block, converter, separator, container)
 
     def query_binary_values(self, message, datatype='f', is_big_endian=False, container=list, delay=None, header_fmt='ieee'):
         """Converts an iterable of numbers into a block of data in the ieee format.
@@ -457,13 +460,20 @@ class MessageBasedResource(Resource):
 
         block = self.read_raw()
 
+        if header_fmt == 'ieee':
+            offset, data_length = util.parse_ieee_block_header(block)
+            expected_length = offset + data_length
+
+            while len(block) < expected_length:
+                block += self.read_raw()
+
         try:
             if header_fmt == 'ieee':
-                return from_ieee_block(block, datatype, is_big_endian, container)
+                return util.from_ieee_block(block, datatype, is_big_endian, container)
             elif header_fmt == 'empty':
-                return from_binary_block(block, 0, None, datatype, is_big_endian, container)
+                return util.from_binary_block(block, 0, None, datatype, is_big_endian, container)
             elif header_fmt == 'hp':
-                return from_binary_block(block, 4, None, datatype, is_big_endian, container)
+                return util.from_binary_block(block, 4, None, datatype, is_big_endian, container)
         except ValueError as e:
             raise errors.InvalidBinaryFormat(e.args)
 

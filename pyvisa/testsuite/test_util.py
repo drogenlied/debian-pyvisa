@@ -28,23 +28,33 @@ class TestParser(BaseTestCase):
             self.assertAlmostEqual(a, b)
 
     def test_ieee_integer(self):
-        values = list(range(100))
+        values = list(range(99))
         containers = (list, tuple) #+ ((np.asarray,) if np else ())
-        for fmt in 'iIlLfd':
+        for fmt in 'bBhHiIfd':
             for endi in (True, False):
                 for cont in containers:
                     conv = cont(values)
-                    block = util.to_ieee_block(conv, fmt, endi)
-                    parsed = util.from_ieee_block(block, fmt, endi, cont)
-                    self.assertEqual(conv, parsed)
+                    msg = 'fmt=%s, endianness=%s, container=%s' % (fmt, endi, cont.__name__)
+                    try:
+                        block = util.to_ieee_block(conv, fmt, endi)
+                        parsed = util.from_ieee_block(block, fmt, endi, cont)
+                    except Exception as e:
+                        raise Exception(msg + '\n' + repr(e))
+
+                    self.assertEqual(conv, parsed, msg)
 
     def test_ieee_noninteger(self):
-        values = [val + 0.5 for val in range(100)]
+        values = [val + 0.5 for val in range(99)]
         containers = (list, tuple) #+ ((np.asarray,) if np else ())
         for fmt in 'fd':
             for endi in (True, False):
                 for cont in containers:
                     conv = cont(values)
-                    block = util.to_ieee_block(conv, fmt, endi)
-                    parsed = util.from_ieee_block(block, fmt, endi, cont)
-                    self.assertEqual(conv, parsed)
+                    msg = 'fmt=%s, endianness=%s, container=%s' % (fmt, endi, cont.__name__)
+                    try:
+                        block = util.to_ieee_block(conv, fmt, endi)
+                        parsed = util.from_ieee_block(block, fmt, endi, cont)
+                    except Exception as e:
+                        raise Exception(msg + '\n' + repr(e))
+
+                    self.assertEqual(conv, parsed, msg)

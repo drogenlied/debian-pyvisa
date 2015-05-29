@@ -81,8 +81,11 @@ def set_signatures(library, errcheck=None):
                      It should be take three areguments (result, func, arguments).
                      See errcheck in ctypes.
     """
-    if not hasattr(library, '_functions'):
+
+    # Somehow hasattr(library, '_functions') segfaults in cygwin (See #131)
+    if '_functions' not in dir(library):
         library._functions = []
+        library._functions_failed = []
 
     def _applier(restype, errcheck_):
         def _internal(function_name, argtypes, required=False):
@@ -91,6 +94,7 @@ def set_signatures(library, errcheck=None):
                 # noinspection PyProtectedMember
                 library._functions.append(function_name)
             except AttributeError:
+                library._functions_failed.append(function_name)
                 if required:
                     raise
         return _internal
@@ -397,7 +401,7 @@ def disable_event(library, session, event_type, mechanism):
     :param session: Unique logical identifier to a session.
     :param event_type: Logical event identifier.
     :param mechanism: Specifies event handling mechanisms to be disabled.
-                      (Constants.QUEUE, .Handler, .SUSPEND_HNDLR, .ALL_MECH)
+                      (Constants.VI_QUEUE, .VI_HNDLR, .VI_SUSPEND_HNDLR, .VI_ALL_MECH)
     :return: return value of the library call.
     :rtype: :class:`pyvisa.constants.StatusCode`
     """
@@ -412,8 +416,8 @@ def discard_events(library, session, event_type, mechanism):
     :param library: the visa library wrapped by ctypes.
     :param session: Unique logical identifier to a session.
     :param event_type: Logical event identifier.
-    :param mechanism: Specifies event handling mechanisms to be disabled.
-                      (Constants.QUEUE, .Handler, .SUSPEND_HNDLR, .ALL_MECH)
+    :param mechanism: Specifies event handling mechanisms to be dicarded.
+                      (Constants.VI_QUEUE, .VI_HNDLR, .VI_SUSPEND_HNDLR, .VI_ALL_MECH)
     :return: return value of the library call.
     :rtype: :class:`pyvisa.constants.StatusCode`
     """
@@ -428,8 +432,8 @@ def enable_event(library, session, event_type, mechanism, context=None):
     :param library: the visa library wrapped by ctypes.
     :param session: Unique logical identifier to a session.
     :param event_type: Logical event identifier.
-    :param mechanism: Specifies event handling mechanisms to be disabled.
-                      (Constants.QUEUE, .Handler, .SUSPEND_HNDLR)
+    :param mechanism: Specifies event handling mechanisms to be enabled.
+                      (Constants.VI_QUEUE, .VI_HNDLR, .VI_SUSPEND_HNDLR)
     :param context:
     :return: return value of the library call.
     :rtype: :class:`pyvisa.constants.StatusCode`
@@ -725,7 +729,8 @@ def install_handler(library, session, event_type, handler, user_handle):
     :param event_type: Logical event identifier.
     :param handler: Interpreted as a valid reference to a handler to be installed by a client application.
     :param user_handle: A value specified by an application that can be used for identifying handlers
-                        uniquely for an event type.
+                        uniquely for an event type. Can be a regular python object (int, float, str, list
+                        of floats or ints) or a ctypes object.
     :returns: a handler descriptor which consists of three elements:
              - handler (a python callable)
              - user handle (a ctypes object)
@@ -752,7 +757,12 @@ def install_handler(library, session, event_type, handler, user_handle):
                 converted_user_handle = \
                     (c_long * len(user_handle))(*tuple(user_handle))
         else:
-            raise TypeError("Type not allowed as user handle: %s" % type(user_handle))
+            try:
+                # check if it is already a ctypes
+                byref(user_handle)
+                converted_user_handle = user_handle
+            except TypeError:
+                raise TypeError("Type not allowed as user handle: %s" % type(user_handle))
 
     set_user_handle_type(library, converted_user_handle)
     converted_handler = ViHndlr(handler)
@@ -786,7 +796,7 @@ def lock(library, session, lock_type, timeout, requested_key=None):
     else:
         access_key = create_string_buffer(256)
     ret = library.viLock(session, lock_type, timeout, requested_key, access_key)
-    return access_key, ret
+    return access_key.value, ret
 
 
 def map_address(library, session, map_space, map_base, map_size,
@@ -1367,6 +1377,9 @@ def parse_resource_extended(library, session, resource_name):
                                 unaliased_expanded_resource_name,
                                 alias_if_exists)
 
+    if ret != constants.VI_SUCCESS:
+        return None, ret
+
     res = [buffer_to_text(val)
            for val in (resource_class,
                        unaliased_expanded_resource_name,
@@ -1691,12 +1704,14 @@ def uninstall_handler(library, session, event_type, handler, user_handle=None):
     :param session: Unique logical identifier to a session.
     :param event_type: Logical event identifier.
     :param handler: Interpreted as a valid reference to a handler to be uninstalled by a client application.
-    :param user_handle: A value specified by an application that can be used for identifying handlers
-                        uniquely in a session for an event.
+    :param user_handle: The user_handle (a ctypes object) in the returned value from install_handler.
     :return: return value of the library call.
     :rtype: :class:`pyvisa.constants.StatusCode`
     """
-    return library.viUninstallHandler(session, event_type, handler, byref(user_handle))
+    set_user_handle_type(library, user_handle)
+    if user_handle != None:
+         user_handle = byref(user_handle)
+    return library.viUninstallHandler(session, event_type, handler, user_handle)
 
 
 def unlock(library, session):

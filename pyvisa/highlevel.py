@@ -21,6 +21,7 @@ from collections import defaultdict
 from . import logger
 from . import constants
 from . import errors
+from . import rname
 
 #: Resource extended information
 #:
@@ -97,7 +98,7 @@ class VisaLibraryBase(object):
         if (cls, library_path) in cls._registry:
             return cls._registry[(cls, library_path)]
 
-        cls._registry[(cls, library_path)] = obj = super(VisaLibraryBase, cls).__new__(cls)
+        obj = super(VisaLibraryBase, cls).__new__(cls)
 
         obj.library_path = library_path
 
@@ -113,6 +114,8 @@ class VisaLibraryBase(object):
         obj.handlers = defaultdict(list)
 
         logger.debug('Created library wrapper for %s', library_path)
+
+        cls._registry[(cls, library_path)] = obj
 
         return obj
 
@@ -182,7 +185,7 @@ class VisaLibraryBase(object):
         except TypeError as e:
             raise errors.VisaTypeError(str(e))
 
-        self.handlers[session].append(new_handler)
+        self.handlers[session].append(new_handler + (event_type,))
         return new_handler[1]
 
     def uninstall_visa_handler(self, session, event_type, handler, user_handle=None):
@@ -191,16 +194,32 @@ class VisaLibraryBase(object):
         :param session: Unique logical identifier to a session.
         :param event_type: Logical event identifier.
         :param handler: Interpreted as a valid reference to a handler to be uninstalled by a client application.
-        :param user_handle: A value specified by an application that can be used for identifying handlers
-                            uniquely in a session for an event.
+        :param user_handle: The user handle (ctypes object or None) returned by install_visa_handler.
         """
         for ndx, element in enumerate(self.handlers[session]):
-            if element[0] is handler and element[1] is user_handle:
+            if element[0] is handler and element[1] is user_handle and element[4] == event_type:
                 del self.handlers[session][ndx]
                 break
         else:
             raise errors.UnknownHandler(event_type, handler, user_handle)
-        self.uninstall_handler(session, event_type, handler, user_handle)
+        self.uninstall_handler(session, event_type,  element[2], user_handle)
+
+    def __uninstall_all_handlers_helper(self, session):
+        for element in self.handlers[session]:
+            self.uninstall_handler(session, element[4],  element[2], element[1])
+        del self.handlers[session]
+
+    def uninstall_all_visa_handlers(self, session):
+        """Uninstalls all previously installed handlers for a particular session.
+
+        :param session: Unique logical identifier to a session. If None, operates on all sessions.
+        """
+
+        if session is not None:
+            self.__uninstall_all_handlers_helper(session)
+        else:
+            for session in list(self.handlers):
+                self.__uninstall_all_handlers_helper(session)
 
     def read_memory(self, session, space, offset, width, extended=False):
         """Reads in an 8-bit, 16-bit, 32-bit, or 64-bit value from the specified memory space and offset.
@@ -454,8 +473,8 @@ class VisaLibraryBase(object):
 
         :param session: Unique logical identifier to a session.
         :param event_type: Logical event identifier.
-        :param mechanism: Specifies event handling mechanisms to be disabled.
-                          (Constants.VI_QUEUE, .VI_HNDLR, .VI_SUSPEND_HNDLR, .VI_SUSPEND_HNDLR)
+        :param mechanism: Specifies event handling mechanisms to be discarded.
+                          (Constants.VI_QUEUE, .VI_HNDLR, .VI_SUSPEND_HNDLR, .VI_ALL_MECH)
         :return: return value of the library call.
         :rtype: :class:`pyvisa.constants.StatusCode`
         """
@@ -468,34 +487,11 @@ class VisaLibraryBase(object):
 
         :param session: Unique logical identifier to a session.
         :param event_type: Logical event identifier.
-        :param mechanism: Specifies event handling mechanisms to be disabled.
+        :param mechanism: Specifies event handling mechanisms to be enabled.
                           (Constants.VI_QUEUE, .VI_HNDLR, .VI_SUSPEND_HNDLR)
         :param context:
         :return: return value of the library call.
         :rtype: :class:`pyvisa.constants.StatusCode`
-        """
-        raise NotImplementedError
-
-    def find_next(self, find_list):
-        """Returns the next resource from the list of resources found during a previous call to find_resources().
-
-        Corresponds to viFindNext function of the VISA library.
-
-        :param find_list: Describes a find list. This parameter must be created by find_resources().
-        :return: Returns a string identifying the location of a device, return value of the library call.
-        :rtype: unicode (Py2) or str (Py3), :class:`pyvisa.constants.StatusCode`
-        """
-        raise NotImplementedError
-
-    def find_resources(self, session, query):
-        """Queries a VISA system to locate the resources associated with a specified interface.
-
-        Corresponds to viFindRsrc function of the VISA library.
-
-        :param session: Unique logical identifier to a session (unused, just to uniform signatures).
-        :param query: A regular expression followed by an optional logical expression. Use '?*' for all.
-        :return: find_list, return_counter, instrument_description, return value of the library call.
-        :rtype: ViFindList, int, unicode (Py2) or str (Py3), :class:`pyvisa.constants.StatusCode`
         """
         raise NotImplementedError
 
@@ -662,6 +658,13 @@ class VisaLibraryBase(object):
                  - ctypes handler (ctypes object wrapping handler)
                  and return value of the library call.
         :rtype: int, :class:`pyvisa.constants.StatusCode`
+        """
+        raise NotImplementedError
+
+    def list_resources(self, session, query='?*::INSTR'):
+        """Returns a tuple of all connected devices matching query.
+
+        :param query: regular expression used to match devices.
         """
         raise NotImplementedError
 
@@ -1014,7 +1017,7 @@ class VisaLibraryBase(object):
         :return: Resource information with interface type and board number, return value of the library call.
         :rtype: :class:`pyvisa.highlevel.ResourceInfo`, :class:`pyvisa.constants.StatusCode`
         """
-        raise NotImplementedError
+        return self.parse_resource_extended(session, resource_name)
 
     def parse_resource_extended(self, session, resource_name):
         """Parse a resource string to get extended interface information.
@@ -1027,7 +1030,15 @@ class VisaLibraryBase(object):
         :return: Resource information, return value of the library call.
         :rtype: :class:`pyvisa.highlevel.ResourceInfo`, :class:`pyvisa.constants.StatusCode`
         """
-        raise NotImplementedError
+        try:
+            parsed = rname.parse_resource_name(resource_name)
+
+            return (ResourceInfo(parsed.interface_type_const,
+                                 parsed.board,
+                                 parsed.resource_class, None, None),
+                    constants.StatusCode.success)
+        except ValueError:
+            return 0, constants.StatusCode.error_invalid_resource_name
 
     def peek_8(self, session, address):
         """Read an 8-bit value from the specified address.
@@ -1449,7 +1460,7 @@ def open_visa_library(specification):
         return cls(argument)
     except Exception as e:
         logger.debug('Could not open VISA wrapper %s: %s\n%s', cls, str(argument), e)
-        raise e
+        raise
 
 
 class ResourceManager(object):
@@ -1546,22 +1557,7 @@ class ResourceManager(object):
         :param query: regular expression used to match devices.
         """
 
-        lib = self.visalib
-
-        resources = []
-
-        try:
-            find_list, return_counter, instrument_description, err = lib.find_resources(self.session, query)
-        except errors.VisaIOError as e:
-            if e.error_code == constants.StatusCode.error_resource_not_found:
-                return tuple()
-            raise e
-
-        resources.append(instrument_description)
-        for i in range(return_counter - 1):
-            resources.append(lib.find_next(find_list)[0])
-
-        return tuple(resource for resource in resources)
+        return self.visalib.list_resources(self.session, query)
 
     def list_resources_info(self, query='?*::INSTR'):
         """Returns a dictionary mapping resource names to resource extended
@@ -1585,7 +1581,7 @@ class ResourceManager(object):
         ret, err = self.visalib.parse_resource_extended(self.session, resource_name)
         if err == constants.StatusCode.success:
             return ret
-        raise ValueError('Could not parse resource: %s' % resource_name)
+        raise ValueError('Could not parse resource: %s (error code %s)' % (resource_name, ret))
 
     def open_bare_resource(self, resource_name,
                           access_mode=constants.AccessModes.no_lock,
