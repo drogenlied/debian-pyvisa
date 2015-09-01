@@ -796,7 +796,10 @@ def lock(library, session, lock_type, timeout, requested_key=None):
     else:
         access_key = create_string_buffer(256)
     ret = library.viLock(session, lock_type, timeout, requested_key, access_key)
-    return access_key.value, ret
+    if access_key is None:
+        return None, ret
+    else:
+        return access_key.value, ret
 
 
 def map_address(library, session, map_space, map_base, map_size,
@@ -1376,9 +1379,6 @@ def parse_resource_extended(library, session, resource_name):
                                 byref(interface_board_number), resource_class,
                                 unaliased_expanded_resource_name,
                                 alias_if_exists)
-
-    if ret != constants.VI_SUCCESS:
-        return None, ret
 
     res = [buffer_to_text(val)
            for val in (resource_class,

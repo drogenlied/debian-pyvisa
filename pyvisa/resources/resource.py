@@ -14,6 +14,7 @@
 from __future__ import division, unicode_literals, print_function, absolute_import
 
 import contextlib
+import copy
 import math
 import time
 
@@ -26,13 +27,19 @@ from .. import attributes
 
 class WaitResponse(object):
     """Class used in return of wait_on_event. It properly closes the context upon delete.
+       A call with event_type of 0 (normally used when timed_out is True) will be
+       recorded as None, otherwise it records the proper EventType enum.
     """
     def __init__(self, event_type, context, ret, visalib, timed_out=False):
-        self.event_type = constants.EventType(event_type)
+        if event_type == 0:
+            self.event_type = None
+        else:
+            self.event_type = constants.EventType(event_type)
         self.context = context
         self.ret = ret
         self._visalib = visalib
         self.timed_out = timed_out
+
     def __del__(self):
         if self.context != None:
             self._visalib.close(self.context)
@@ -52,7 +59,11 @@ class Resource(object):
         def _internal(python_class):
             highlevel.ResourceManager.register_resource_class(interface_type, resource_class, python_class)
 
-            attrs = []
+            # If the class already has this attribute,
+            # it means that a parent class was registered first.
+            # We need to copy the current list and extended it.
+            attrs = copy.copy(getattr(python_class, 'visa_attributes_classes', []))
+
             for attr in attributes.AttributesPerResource[(interface_type, resource_class)]:
                 attrs.append(attr)
                 if not hasattr(python_class, attr.py_name) and attr.py_name != '':
@@ -129,8 +140,16 @@ class Resource(object):
     def timeout(self):
         """The timeout in milliseconds for all resource I/O operations.
 
-        None is mapped to VI_TMO_INFINITE.
-        A value less than 1 is mapped to VI_TMO_IMMEDIATE.
+        Special values:
+        - **immediate** (``VI_TMO_IMMEDIATE``): 0
+            (for convenience, any value smaller than 1 is considered as 0)
+        - **infinite** (``VI_TMO_INFINITE``): ``float('+inf')``
+            (for convenience, None is considered as ``float('+inf')``)
+
+        To set an **infinite** timeout, you can also use:
+
+        >>> del instrument.timeout
+
         """
         timeout = self.get_visa_attribute(constants.VI_ATTR_TMO_VALUE)
         if timeout == constants.VI_TMO_INFINITE:
@@ -373,3 +392,6 @@ class Resource(object):
             yield access_key
         finally:
             self.unlock()
+
+
+Resource.register(constants.InterfaceType.unknown, '')(Resource)
