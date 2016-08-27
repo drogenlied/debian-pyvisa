@@ -9,7 +9,7 @@ Build-Depends: debhelper (>= 9),
                python-setuptools,
                python3-all,
                python3-setuptools
-Standards-Version: 3.9.6
+Standards-Version: 3.9.8
 X-Python-Version: all
 X-Python3-Version: >= 3.1
 Vcs-Browser: https://anonscm.debian.org/cgit/python-modules/packages/pyvisa.git
@@ -26,8 +26,8 @@ Description: Transitional dummy package for python-pyvisa
 
 Package: python-pyvisa
 Architecture: all
-Depends: libvisa0, python-pkg-resources, ${python:Depends}, ${misc:Depends}
-Recommends: python-pyvisa-py
+Depends: python-pyvisa-py, python-pkg-resources, ${python:Depends}, ${misc:Depends}
+Suggests: libvisa0
 Replaces: pyvisa (<< 1.6.3-2)
 Breaks: pyvisa (<< 1.6.3-2)
 Description: Python bindings for Virtual Instrument Software Architecture
@@ -38,8 +38,8 @@ Description: Python bindings for Virtual Instrument Software Architecture
 
 Package: python3-pyvisa
 Architecture: all
-Depends: libvisa0, python3-pkg-resources, ${python3:Depends}, ${misc:Depends}
-Recommends: python3-pyvisa-py
+Depends: python3-pyvisa-py, python3-pkg-resources, ${python3:Depends}, ${misc:Depends}
+Suggests: libvisa0
 Description: Python 3 bindings for Virtual Instrument Software Architecture
  The VISA standard provides a common interface for communication with test
  and measurement equipment.
