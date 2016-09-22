@@ -1,3 +1,10 @@
+pyvisa (1.8-4) unstable; urgency=low
+
+  * Moved python-pyvisa-py back from Depends to Recommends. (Closes: #836963)
+    This fixes a circular dependency issue.
+
+ -- Ruben Undheim <ruben.undheim@gmail.com>  Thu, 22 Sep 2016 19:22:55 +0200
+
 pyvisa (1.8-3) unstable; urgency=medium
 
   [ Ondřej Nový ]
