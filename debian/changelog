@@ -4,6 +4,7 @@ pyvisa (1.8-5) UNRELEASED; urgency=medium
   * d/copyright: Use https protocol in Format field
   * d/control: Deprecating priority extra as per policy 4.0.1
   * d/changelog: Remove trailing whitespaces
+  * d/control: Remove ancient X-Python3-Version field
 
  -- Ondřej Nový <onovy@debian.org>  Tue, 13 Feb 2018 10:01:02 +0100
 
