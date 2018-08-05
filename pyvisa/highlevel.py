@@ -16,6 +16,7 @@ from __future__ import division, unicode_literals, print_function, absolute_impo
 import contextlib
 import collections
 import pkgutil
+import os
 from collections import defaultdict
 
 from . import logger
@@ -246,7 +247,7 @@ class VisaLibraryBase(object):
         raise ValueError('%s is not a valid size. Valid values are 8, 16, 32 or 64' % width)
 
     def write_memory(self, session, space, offset, data, width, extended=False):
-        """Write in an 8-bit, 16-bit, 32-bit, value to the specified memory space and offset.
+        """Write in an 8-bit, 16-bit, 32-bit, 64-bit value to the specified memory space and offset.
 
         Corresponds to viOut* functions of the VISA library.
 
@@ -265,8 +266,10 @@ class VisaLibraryBase(object):
             return self.out_16(session, space, offset, data, extended)
         elif width == 32:
             return self.out_32(session, space, offset, data, extended)
+        elif width == 64:
+            return self.out_64(session, space, offset, data, extended)
 
-        raise ValueError('%s is not a valid size. Valid values are 8, 16 or 32' % width)
+        raise ValueError('%s is not a valid size. Valid values are 8, 16, 32, or 64' % width)
 
     def move_in(self, session, space, offset, length, width, extended=False):
         """Moves a block of data to local memory from the specified address space and offset.
@@ -322,7 +325,7 @@ class VisaLibraryBase(object):
         raise ValueError('%s is not a valid size. Valid values are 8, 16, 32 or 64' % width)
 
     def peek(self, session, address, width):
-        """Read an 8, 16 or 32-bit value from the specified address.
+        """Read an 8, 16, 32, or 64-bit value from the specified address.
 
         Corresponds to viPeek* functions of the VISA library.
 
@@ -345,7 +348,7 @@ class VisaLibraryBase(object):
         raise ValueError('%s is not a valid size. Valid values are 8, 16, 32 or 64' % width)
 
     def poke(self, session, address, width, data):
-        """Writes an 8, 16 or 32-bit value from the specified address.
+        """Writes an 8, 16, 32, or 64-bit value from the specified address.
 
         Corresponds to viPoke* functions of the VISA library.
 
@@ -363,8 +366,10 @@ class VisaLibraryBase(object):
             return self.poke_16(session, address, data)
         elif width == 32:
             return self.poke_32(session, address, data)
+        elif width == 64:
+            return self.poke_64(session, address, data)
 
-        raise ValueError('%s is not a valid size. Valid values are 8, 16 or 32' % width)
+        raise ValueError('%s is not a valid size. Valid values are 8, 16, 32, or 64' % width)
 
     # Methods that VISA Library implementations must implement
 
@@ -1035,7 +1040,8 @@ class VisaLibraryBase(object):
 
             return (ResourceInfo(parsed.interface_type_const,
                                  parsed.board,
-                                 parsed.resource_class, None, None),
+                                 parsed.resource_class,
+                                 str(parsed), None),
                     constants.StatusCode.success)
         except ValueError:
             return 0, constants.StatusCode.error_invalid_resource_name
@@ -1411,7 +1417,7 @@ def list_backends():
     :rtype: list
     """
     return ['ni'] + [name for (loader, name, ispkg) in pkgutil.iter_modules()
-                     if name.startswith('pyvisa-')]
+                     if name.startswith('pyvisa-') and not name.endswith('-script')]
 
 
 #: Maps backend name to VisaLibraryBase derived class
@@ -1432,12 +1438,11 @@ def get_wrapper_class(backend_name):
             _WRAPPERS['ni'] = NIVisaLibrary
             return NIVisaLibrary
 
-    for pkgname in list_backends():
-        if pkgname.endswith('-' + backend_name):
-            pkg = __import__(pkgname)
-            _WRAPPERS[backend_name] = cls = pkg.WRAPPER_CLASS
-            return cls
-    else:
+    try:
+        pkg = __import__('pyvisa-' + backend_name)
+        _WRAPPERS[backend_name] = cls = pkg.WRAPPER_CLASS
+        return cls
+    except ImportError:
         raise ValueError('Wrapper not found: No package named pyvisa-%s' % backend_name)
 
 
@@ -1447,6 +1452,12 @@ def open_visa_library(specification):
     In general, you should not use the function directly. The VISA library
     wrapper will be created automatically when you create a ResourceManager object.
     """
+
+    if not specification:
+        try:
+            specification = os.environ['PYVISA_LIBRARY']
+        except KeyError:
+            logger.debug('No visa libaray specified and environment variable PYVISA_LIBRARY is unset. Using NI library')
 
     try:
         argument, wrapper = specification.split('@')
