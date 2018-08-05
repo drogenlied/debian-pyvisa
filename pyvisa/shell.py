@@ -18,7 +18,7 @@ import cmd
 import sys
 
 from .compat import input
-from . import ResourceManager, constants, VisaIOError
+from . import ResourceManager, attributes, constants, VisaIOError
 from .thirdparty import prettytable
 
 if sys.platform == 'darwin':
@@ -56,7 +56,7 @@ if sys.platform == 'darwin':
                 if intro is not None:
                     self.intro = intro
                 if self.intro:
-                    self.stdout.write(str(self.intro)+"\n")
+                    self.stdout.write(str(self.intro) + "\n")
                 stop = None
                 while not stop:
                     if self.cmdqueue:
@@ -129,7 +129,7 @@ class VisaShell(Cmd):
             self.resources = []
             for ndx, (resource_name, value) in enumerate(resources.items()):
                 if not args:
-                    print('({:2d}) {}'.format(ndx, resource_name))
+                    print('({0:2d}) {1}'.format(ndx, resource_name))
                     if value.alias:
                         print('     alias: {}'.format(value.alias))
 
@@ -156,8 +156,8 @@ class VisaShell(Cmd):
         try:
             self.current = self.resource_manager.open_resource(args)
             print('{} has been opened.\n'
-                  'You can talk to the device using "write", "read" or "query.\n'
-                  'The default end of message is added to each message'.format(args))
+                  'You can talk to the device using "write", "read" or "query".\n'
+                  'The default end of message is added to each message.'.format(args))
 
             self.py_attr = []
             self.vi_attr = []
@@ -228,6 +228,38 @@ class VisaShell(Cmd):
         except Exception as e:
             print(e)
 
+    def do_timeout(self, args):
+        """Get or set timeout (in ms) for resource in use.
+
+        Get timeout:
+
+            timeout
+
+        Set timeout:
+
+            timeout <mstimeout>
+
+        """
+
+        if not self.current:
+            print('There are no resources in use. Use the command "open".')
+            return
+
+        args = args.strip()
+
+        if not args:
+            try:
+                print('Timeout: {}ms'.format(self.current.timeout))
+            except Exception as e:
+                print(e)
+        else:        
+            args = args.split(' ')
+            try:
+                self.current.timeout = float(args[0])
+                print('Done')
+            except Exception as e:
+                print(e)
+
     def print_attribute_list(self):
         p = prettytable.PrettyTable(('VISA name', 'Constant', 'Python name', 'val'))
         for attr in getattr(self.current, 'visa_attributes_classes', ()):
@@ -290,8 +322,28 @@ class VisaShell(Cmd):
             attr_name, attr_state = args[0], args[1]
             if attr_name.startswith('VI_'):
                 try:
-                    self.current.set_visa_attribute(getattr(constants, attr_name), attr_state)
-                    print('Done')
+                    attributeId = getattr(constants, attr_name)
+                    attr = attributes.AttributesByID[attributeId]
+                    datatype = attr.visa_type
+                    retcode = None
+                    if datatype == 'ViBoolean':
+                        if attr_state == 'True':
+                            attr_state = True
+                        elif attr_state == 'False':
+                            attr_state = False
+                        else:
+                            retcode = constants.StatusCode.error_nonsupported_attribute_state
+                    elif datatype in ['ViUInt8', 'ViUInt16', 'ViUInt32', 'ViInt8', 'ViInt16', 'ViInt32']:
+                        try:
+                            attr_state = int(attr_state)
+                        except ValueError:
+                            retcode = constants.StatusCode.error_nonsupported_attribute_state
+                    if not retcode:
+                        retcode = self.current.set_visa_attribute(attributeId, attr_state)
+                    if retcode:
+                        print('Error {}'.format(str(retcode)))
+                    else:
+                        print('Done')
                 except Exception as e:
                     print(e)
             else:
@@ -306,6 +358,55 @@ class VisaShell(Cmd):
     def complete_attr(self, text, line, begidx, endidx):
         return [item for item in self.py_attr if item.startswith(text)] + \
                [item for item in self.vi_attr if item.startswith(text)]
+
+    def do_termchar(self, args):
+        """Get or set termination character for resource in use.
+        <termchar> can be one of: CR, LF, CRLF, NUL or None.
+        None is used to disable termination character
+        
+        Get termination character:
+
+            termchar
+
+        Set termination character read or read+write:
+
+            termchar <termchar> [<termchar>]
+
+        """
+
+        if not self.current:
+            print('There are no resources in use. Use the command "open".')
+            return
+
+        args = args.strip()
+
+        if not args:
+            try:
+                charmap = { u'\r': 'CR', u'\n': 'LF', u'\r\n': 'CRLF', u'\0': 'NUL' }
+                chr = self.current.read_termination
+                if chr in charmap:
+                    chr = charmap[chr]
+                chw = self.current.write_termination
+                if chw in charmap:
+                    chw = charmap[chw]
+                print('Termchar read: {} write: {}'.format(chr, chw))
+            except Exception as e:
+                print(e)
+        else:        
+            args = args.split(' ')
+            charmap = { 'CR': u'\r', 'LF': u'\n', 'CRLF': u'\r\n', 'NUL': u'\0', 'None': None }
+            chr = args[0]
+            chw = args[0 if len(args) == 1 else 1]
+            if chr in charmap and chw in charmap:
+                try:
+                    self.current.read_termination = charmap[chr]
+                    self.current.write_termination = charmap[chw]
+                    print('Done')
+                except Exception as e:
+                    print(e)
+            else:
+                print('use CR, LF, CRLF, NUL or None to set termchar')
+                return
 
     def do_exit(self, arg):
         """Exit the shell session."""

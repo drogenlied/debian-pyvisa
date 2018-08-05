@@ -113,6 +113,12 @@ class Resource(object):
     def __repr__(self):
         return "<%r(%r)>" % (self.__class__.__name__, self.resource_name)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     @property
     def last_status(self):
         """Last status code for this session.
@@ -261,8 +267,10 @@ class Resource(object):
 
         :param name: Attribute for which the state is to be modified. (Attributes.*)
         :param state: The state of the attribute to be set for the specified object.
+        :return: return value of the library call.
+        :rtype: :class:`pyvisa.constants.StatusCode`
         """
-        self.visalib.set_attribute(self.session, name, state)
+        return self.visalib.set_attribute(self.session, name, state)
 
     def clear(self):
         """Clears this resource
@@ -334,7 +342,7 @@ class Resource(object):
             event_type, context, ret = self.visalib.wait_on_event(self.session, in_event_type, timeout)
         except errors.VisaIOError as exc:
             if capture_timeout and exc.error_code == constants.StatusCode.error_timeout:
-                return WaitResponse(0, None, exc.error_code, self.visalib, timed_out=True)
+                return WaitResponse(in_event_type, None, exc.error_code, self.visalib, timed_out=True)
             raise
         return WaitResponse(event_type, context, ret, self.visalib)
 
