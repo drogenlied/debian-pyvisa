@@ -3,7 +3,7 @@ Upstream-Name: pyvisa
 Source: https://github.com/pyvisa/pyvisa
 
 Files: *
-Copyright: 2005-2014 PyVISA Authors and contributors
+Copyright: 2005-2018 PyVISA Authors and contributors
            2005, 2006, 2007, 2008 Torsten Bronger <bronger@physik.rwth-aachen.de>
            2005, 2006, 2007, 2008 Gregor Thalhammer <gth@users.sourceforge.net>
            2012, 2013 Florian Bauer
@@ -21,8 +21,7 @@ Files: pyvisa/thirdparty/prettytable.py
 Copyright: 2009-2013 Luke Maurits <luke@maurits.id.au>
 License: BSD-3-clause
 
-Files: pyvisa/compat/check_output.py
-       pyvisa/compat/nullhandler.py
+Files: pyvisa/compat/nullhandler.py
        pyvisa/compat/struct.py
 Copyright: 2013, 2015 PSF
 License: PSF
@@ -42,7 +41,7 @@ License: BSD-3-clause
 
 Files: debian/*
 Copyright: 2013 Simon Richter <sjr@debian.org>
-           2015 Ruben Undheim <ruben.undheim@gmail.com>
+           2015-2016,2018 Ruben Undheim <ruben.undheim@gmail.com>
 License: GPL-2+
 
 
