@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-try:
-    import sys
-    reload(sys).setdefaultencoding("UTF-8")
-except:
-    pass
-
+import sys
 
 try:
     from setuptools import setup
@@ -16,8 +11,8 @@ except ImportError:
 
 
 def read(filename):
-    with open(filename, 'r') as f:
-        return f.read()
+    with open(filename, 'rb') as f:
+        return f.read().decode('utf8')
 
 
 long_description = '\n\n'.join([read('README'),
@@ -27,12 +22,12 @@ long_description = '\n\n'.join([read('README'),
 __doc__ = long_description
 
 requirements = []
-if sys.version_info < (3, 4):
+if sys.version_info < (3,):
     requirements.append('enum34')
 
 setup(name='PyVISA',
       description='Python VISA bindings for GPIB, RS232, TCPIP and USB instruments',
-      version='1.9.0',
+      version='1.9.1',
       long_description=long_description,
       author='Torsten Bronger, Gregor Thalhammer',
       author_email='bronger@physik.rwth-aachen.de',
