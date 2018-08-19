@@ -1,3 +1,11 @@
+pyvisa (1.9.1-1) UNRELEASED; urgency=medium
+
+  * New upstream version 1.9.1
+    - Refreshed patch
+  * debian/upstream/metadata added pointing to github
+
+ -- Ruben Undheim <ruben.undheim@gmail.com>  Sun, 19 Aug 2018 22:16:31 +0200
+
 pyvisa (1.9.0-1) unstable; urgency=medium
 
   * New upstream release
