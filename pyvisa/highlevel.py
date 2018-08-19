@@ -1446,6 +1446,30 @@ def get_wrapper_class(backend_name):
         raise ValueError('Wrapper not found: No package named pyvisa-%s' % backend_name)
 
 
+def _get_default_wrapper():
+    """Return an available default VISA wrapper as a string ('ni' or 'py').
+
+    Use NI if the binary is found, else try to use pyvisa-py.
+    If neither can be found, raise a ValueError.
+    """
+
+    from .ctwrapper import NIVisaLibrary
+    ni_binary_found = bool(NIVisaLibrary.get_library_paths())
+    if ni_binary_found:
+        logger.debug('The NI implementation available')
+        return 'ni'
+    else:
+        logger.debug('Did not find NI binary')
+
+    try:
+        get_wrapper_class('py')  # check for pyvisa-py availability
+        logger.debug('pyvisa-py is available.')
+        return 'py'
+    except ValueError:
+        logger.debug('Did not find pyvisa-py package')
+    raise ValueError('Could not locate a VISA implementation. Install either the NI binary or pyvisa-py.')
+
+
 def open_visa_library(specification):
     """Helper function to create a VISA library wrapper.
 
@@ -1454,16 +1478,19 @@ def open_visa_library(specification):
     """
 
     if not specification:
+        logger.debug('No visa library specified, trying to find alternatives.')
         try:
             specification = os.environ['PYVISA_LIBRARY']
         except KeyError:
-            logger.debug('No visa libaray specified and environment variable PYVISA_LIBRARY is unset. Using NI library')
+            logger.debug('Environment variable PYVISA_LIBRARY is unset.')
 
     try:
         argument, wrapper = specification.split('@')
     except ValueError:
         argument = specification
-        wrapper = 'ni'
+        wrapper = None  # Flag that we need a fallback, but avoid nested exceptions
+    if wrapper is None:
+        wrapper = _get_default_wrapper()
 
     cls = get_wrapper_class(wrapper)
 
@@ -1565,7 +1592,46 @@ class ResourceManager(object):
     def list_resources(self, query='?*::INSTR'):
         """Returns a tuple of all connected devices matching query.
 
-        :param query: regular expression used to match devices.
+        note: The query uses the VISA Resource Regular Expression syntax - which is not the same 
+              as the Python regular expression syntax. (see below)
+
+            The VISA Resource Regular Expression syntax is defined in the VISA Library specification:
+            http://www.ivifoundation.org/docs/vpp43.pdf
+
+            Symbol      Meaning
+            ----------  ----------
+
+            ?           Matches any one character.
+
+            \           Makes the character that follows it an ordinary character
+                        instead of special character. For example, when a question
+                        mark follows a backslash (\?), it matches the ? character
+                        instead of any one character.
+
+            [list]      Matches any one character from the enclosed list. You can
+                        use a hyphen to match a range of characters.
+
+            [^list]     Matches any character not in the enclosed list. You can use
+                        a hyphen to match a range of characters.
+
+            *           Matches 0 or more occurrences of the preceding character or
+                        expression.
+
+            +           Matches 1 or more occurrences of the preceding character or
+                        expression.
+
+            Exp|exp     Matches either the preceding or following expression. The or
+                        operator | matches the entire expression that precedes or
+                        follows it and not just the character that precedes or follows
+                        it. For example, VXI|GPIB means (VXI)|(GPIB), not VX(I|G)PIB.
+
+            (exp)       Grouping characters or expressions.
+        
+            Thus the default query, '?*::INSTR', matches any sequences of characters ending
+            ending with '::INSTR'.
+        
+        :param query: a VISA Resource Regular Expression used to match devices.
+        
         """
 
         return self.visalib.list_resources(self.session, query)
@@ -1573,8 +1639,11 @@ class ResourceManager(object):
     def list_resources_info(self, query='?*::INSTR'):
         """Returns a dictionary mapping resource names to resource extended
         information of all connected devices matching query.
+        
+        For details of the VISA Resource Regular Expression syntax used in query,
+        refer to list_resources().
 
-        :param query: regular expression used to match devices.
+        :param query: a VISA Resource Regular Expression used to match devices.
         :return: Mapping of resource name to ResourceInfo
         :rtype: dict[str, :class:`pyvisa.highlevel.ResourceInfo`]
         """
