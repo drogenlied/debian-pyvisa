@@ -7,16 +7,15 @@ Subject: Fix build
  1 file changed, 5 insertions(+), 4 deletions(-)
 
 diff --git a/setup.py b/setup.py
-index a3d05a8..43c0732 100644
+index 2086c01..75652d0 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -16,13 +16,14 @@ except ImportError:
- 
+@@ -12,12 +12,13 @@ except ImportError:
  
  def read(filename):
--    with open(filename, 'r') as f:
-+    with open(filename, 'rb') as f:
-         return f.read()
+     with open(filename, 'rb') as f:
+-        return f.read().decode('utf8')
++        return f.read()
  
 +a2 = read('AUTHORS').decode('utf-8')
 +a3 = read('CHANGES').decode('utf-8')
