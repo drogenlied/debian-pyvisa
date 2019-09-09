@@ -1,25 +1,25 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@ --with python2,python3 --buildsystem=python_distutils
+	dh $@ --with python3 --buildsystem=pybuild
 
 override_dh_auto_clean:
 	$(RM) -r PyVISA.egg-info
 	$(RM) -r build
 	dh_auto_clean
 
-override_dh_auto_build:
-	dh_auto_build
-	set -ex; for python in $(shell py3versions -r); do \
-		$$python setup.py build; \
-	done
+#override_dh_auto_build:
+#	dh_auto_build
+#	set -ex; for python in $(shell py3versions -r); do \
+#		$$python setup.py build; \
+#	done
 
-override_dh_auto_install:
-	dh_auto_install
-	set -ex; for python in $(shell py3versions -r); do \
-		$$python setup.py install --install-layout=deb \
-		--root $(CURDIR)/debian/tmp; \
-	done;
+#override_dh_auto_install:
+#	dh_auto_install
+#	set -ex; for python in $(shell py3versions -r); do \
+#		$$python setup.py install --install-layout=deb \
+#		--root $(CURDIR)/debian/tmp; \
+#	done;
 
 override_dh_installchangelogs:
 	dh_installchangelogs -k CHANGES

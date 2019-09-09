@@ -5,8 +5,6 @@ Maintainer: Debian Python Modules Team <python-modules-team@lists.alioth.debian.
 Uploaders: Ruben Undheim <ruben.undheim@gmail.com>
 Build-Depends: debhelper-compat (= 11),
                dh-python,
-               python-all,
-               python-setuptools,
                python3-all,
                python3-setuptools
 Standards-Version: 4.2.0
@@ -14,26 +12,6 @@ X-Python-Version: all
 Vcs-Browser: https://salsa.debian.org/python-team/modules/pyvisa
 Vcs-Git: https://salsa.debian.org/python-team/modules/pyvisa.git
 Homepage: https://pyvisa.readthedocs.io/
-
-Package: pyvisa
-Depends: python-pyvisa, ${misc:Depends}
-Architecture: all
-Section: oldlibs
-Description: Transitional dummy package for python-pyvisa
- This is a transitional dummy package. It can safely be removed.
-
-Package: python-pyvisa
-Architecture: all
-Depends: python-pkg-resources, ${python:Depends}, ${misc:Depends}
-Recommends: python-pyvisa-py
-Suggests: libvisa0
-Replaces: pyvisa (<< 1.6.3-2)
-Breaks: pyvisa (<< 1.6.3-2)
-Description: Python bindings for Virtual Instrument Software Architecture
- The VISA standard provides a common interface for communication with test
- and measurement equipment.
- .
- This package provides Python bindings for VISA.
 
 Package: python3-pyvisa
 Architecture: all
