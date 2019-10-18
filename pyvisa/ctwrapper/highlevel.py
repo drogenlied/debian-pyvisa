@@ -43,6 +43,13 @@ def _args_to_str(args):
     return tuple(out)
 
 
+def unique(seq):
+    """Keep unique while preserving order.
+    """
+    seen = set()
+    return [x for x in seq if not (x in seen or seen.add(x))]
+
+
 @add_visa_methods
 class NIVisaLibrary(highlevel.VisaLibraryBase):
     """High level NI-VISA Library wrapper using ctypes.
@@ -70,23 +77,21 @@ class NIVisaLibrary(highlevel.VisaLibraryBase):
 
         from ..util import LibraryPath, read_user_library_path
 
-        user_lib = read_user_library_path()
+        # Try to find NI libraries using known names.
         tmp = [find_library(library_path)
                for library_path in ('visa', 'visa32', 'visa32.dll', 'visa64', 'visa64.dll')]
 
-        tmp = [LibraryPath(library_path)
-               for library_path in set(tmp)
-               if library_path is not None]
-
         logger.debug('Automatically found library files: %s' % tmp)
 
+        # Prepend the path provided by the user in configuration files (if any).
+        user_lib = read_user_library_path()
         if user_lib:
-            user_lib = LibraryPath(user_lib, 'user')
-            try:
-                tmp.remove(user_lib)
-            except ValueError:
-                pass
             tmp.insert(0, user_lib)
+
+        # Deduplicate and convert string paths to LibraryPath objects
+        tmp = [LibraryPath(library_path)
+               for library_path in unique(tmp)
+               if library_path is not None]
 
         return tuple(tmp)
 
@@ -196,7 +201,7 @@ class NIVisaLibrary(highlevel.VisaLibraryBase):
     def list_resources(self, session, query='?*::INSTR'):
         """Returns a tuple of all connected devices matching query.
 
-        note: The query uses the VISA Resource Regular Expression syntax - which is not the same 
+        note: The query uses the VISA Resource Regular Expression syntax - which is not the same
               as the Python regular expression syntax. (see below)
 
             The VISA Resource Regular Expression syntax is defined in the VISA Library specification:
@@ -230,10 +235,10 @@ class NIVisaLibrary(highlevel.VisaLibraryBase):
                         it. For example, VXI|GPIB means (VXI)|(GPIB), not VX(I|G)PIB.
 
             (exp)       Grouping characters or expressions.
-        
+
             Thus the default query, '?*::INSTR', matches any sequences of characters ending
             ending with '::INSTR'.
-        
+
         :param query: a VISA Resource Regular Expression used to match devices.
         """
 

@@ -15,6 +15,7 @@ from __future__ import (division, unicode_literals, print_function,
                         absolute_import)
 
 import contextlib
+import struct
 import time
 import warnings
 
@@ -207,6 +208,10 @@ class MessageBasedResource(Resource):
 
         :param message: the message to be sent.
         :type message: unicode (Py2) or str (Py3)
+        :param termination: alternative character termination to use.
+        :type termination: unicode (Py2) or str (Py3)
+        :param encoding: encoding to convert from unicode to bytes.
+        :type encoding: unicode (Py2) or str (Py3)
         :return: number of bytes written.
         :rtype: int
         """
@@ -236,7 +241,7 @@ class MessageBasedResource(Resource):
         :param values: data to be writen to the device.
         :param converter: function used to convert each value.
                           String formatting codes are also accepted.
-                          Defaults to str.
+                          Defaults to 'f'.
         :type converter: callable | str
         :param separator: a callable that join the values in a single str.
                           If a str is given, separator.join(values) is used.
@@ -265,7 +270,7 @@ class MessageBasedResource(Resource):
 
     def write_binary_values(self, message, values, datatype='f',
                             is_big_endian=False, termination=None,
-                            encoding=None):
+                            encoding=None, header_fmt='ieee'):
         """Write a string message to the device followed by values in binary
         format.
 
@@ -277,6 +282,8 @@ class MessageBasedResource(Resource):
         :param datatype: the format string for a single element. See struct
                          module.
         :param is_big_endian: boolean indicating endianess.
+        :param header_fmt: format of the header prefixing the data. Possible
+                           values are: 'ieee', 'hp', 'empty'
         :return: number of bytes written.
         :rtype: int
         """
@@ -287,7 +294,14 @@ class MessageBasedResource(Resource):
                 warnings.warn("write message already ends with "
                               "termination characters", stacklevel=2)
 
-        block = util.to_ieee_block(values, datatype, is_big_endian)
+        if header_fmt == "ieee":
+           block = util.to_ieee_block(values, datatype, is_big_endian)
+        elif header_fmt == "hp":
+            block = util.to_hp_block(values, datatype, is_big_endian)
+        elif header_fmt =="empty":
+            block = util.to_binary_block(values, b"", datatype, is_big_endian)
+        else:
+            raise ValueError("Unsupported header_fmt: %s" % header_fmt)
 
         message = message.encode(enco) + block
 
@@ -321,7 +335,7 @@ class MessageBasedResource(Resource):
         :type chunk_size: int
         :param break_on_termchar: Should the reading stop when a termination
             character is encountered.
-        :type brak_on_termchar: bool
+        :type break_on_termchar: bool
 
         :rtype: bytes
 
@@ -424,8 +438,7 @@ class MessageBasedResource(Resource):
 
         return message[:-len(termination)]
 
-    def read_ascii_values(self, converter='f', separator=',', container=list,
-                          delay=None):
+    def read_ascii_values(self, converter='f', separator=',', container=list):
         """Read values from the device in ascii format returning an iterable of
         values.
 
@@ -450,7 +463,8 @@ class MessageBasedResource(Resource):
 
     def read_binary_values(self, datatype='f', is_big_endian=False,
                            container=list, header_fmt='ieee',
-                           expect_termination=True):
+                           expect_termination=True, data_points=0,
+                           chunk_size=None):
         """Read values from the device in binary format returning an iterable
         of values.
 
@@ -465,39 +479,69 @@ class MessageBasedResource(Resource):
                                    the binary values block does not account
                                    for the final termination character (the
                                    read termination)
+        :param data_points: Number of points expected in the block. This is
+                            used only if the instrument does not report it
+                            itself. This will be converted in a number of bytes
+                            based on the datatype.
+        :param chunk_size: Size of the chunks to read from the device. Using
+                           larger chunks may be faster for large amount of
+                           data.
         :returns: the answer from the device.
         :rtype: type(container)
 
         """
-        block = self._read_raw()
-        expected_length = 0
+        block = self._read_raw(chunk_size)
 
         if header_fmt == 'ieee':
             offset, data_length = util.parse_ieee_block_header(block)
-            expected_length = offset + data_length
+
         elif header_fmt == 'hp':
             offset, data_length = util.parse_hp_block_header(block,
                                                              is_big_endian)
-            expected_length = offset + data_length
+        elif header_fmt == 'empty':
+            offset = 0
+            data_length = 0
+        else:
+            raise ValueError("Invalid header format. Valid options are 'ieee',"
+                             " 'empty', 'hp'")
+
+        # Allow to support instrument such as the Keithley 2000 that do not
+        # report the length of the block
+        data_length = data_length or data_points*struct.calcsize(datatype)
+
+        expected_length = offset + data_length
 
         if expect_termination and self._read_termination is not None:
             expected_length += len(self._read_termination)
 
-        while len(block) < expected_length:
-            block.extend(self._read_raw())
+        # Read all the data if we know what to expect.
+        if data_length != 0:
+            block.extend(self.read_bytes(expected_length - len(block),
+                                         chunk_size=chunk_size))
+        else:
+            # Backward compatibility. This is dangerous and should probably be
+            # removed
+            msg = ('Reading binary data without a known length is error prone,'
+                   ' and should be avoided. This capability will will be'
+                   ' removed in future versions.\n'
+                   'If the instrument does not report the length of the block '
+                   'as part of the transfer, it may be because the size is '
+                   'fixed or can be accessed from the instrumentin using a '
+                   'specific command. You should find the expected number of '
+                   'points and pass it using the `data_points` keyword.')
+            warnings.warn(msg, FutureWarning)
+            # Do not keep reading since we may have already read everything
+
+            # Set the datalength to None to infer it from the block length
+            data_length = None
+
 
         try:
-            if header_fmt == 'ieee':
-                return util.from_ieee_block(block, datatype, is_big_endian,
-                                            container)
-            elif header_fmt == 'hp':
-                return util.from_hp_block(block, datatype, is_big_endian,
+            # Do not reparse the headers since it was already done and since
+            # this allows for custom data length
+            return util.from_binary_block(block, offset, data_length,
+                                          datatype, is_big_endian,
                                           container)
-            elif header_fmt == 'empty':
-                return util.from_binary_block(block, 0, None, datatype,
-                                              is_big_endian, container)
-            else:
-                raise ValueError('Unsupported binary block format.')
         except ValueError as e:
             raise errors.InvalidBinaryFormat(e.args)
 
@@ -625,12 +669,12 @@ class MessageBasedResource(Resource):
         if delay > 0.0:
             time.sleep(delay)
 
-        return self.read_ascii_values(converter, separator, container,
-                                      delay)
+        return self.read_ascii_values(converter, separator, container)
 
     def query_binary_values(self, message, datatype='f', is_big_endian=False,
                             container=list, delay=None, header_fmt='ieee',
-                            expect_termination=True):
+                            expect_termination=True, data_points=0,
+                            chunk_size=None):
         """Query the device for values in binary format returning an iterable
         of values.
 
@@ -646,6 +690,13 @@ class MessageBasedResource(Resource):
                                    the binary values block does not account
                                    for the final termination character (the
                                    read termination)
+        :param data_points: Number of points expected in the block. This is
+                            used only if the instrument does not report it
+                            itself. This will be converted in a number of bytes
+                            based on the datatype.
+        :param chunk_size: Size of the chunks to read from the device. Using
+                           larger chunks may be faster for large amount of
+                           data.
         :returns: the answer from the device.
         :rtype: list
         """
@@ -660,7 +711,8 @@ class MessageBasedResource(Resource):
             time.sleep(delay)
 
         return self.read_binary_values(datatype, is_big_endian, container,
-                                       header_fmt, expect_termination)
+                                       header_fmt, expect_termination,
+                                       data_points, chunk_size)
 
     def ask_for_values(self, message, fmt=None, delay=None):
         """A combination of write(message) and read_values()
@@ -708,6 +760,18 @@ class MessageBasedResource(Resource):
                                 ord(new_termination[-1]))
         yield
         self.set_visa_attribute(constants.VI_ATTR_TERMCHAR, term)
+
+    def flush(self, mask):
+        """Manually clears the specified buffers.
+
+        Depending on the value of the mask this can cause the buffer data
+        to be written to the device.
+
+        :param mask: Specifies the action to be taken with flushing the buffer.
+            See highlevel.VisaLibraryBase.flush for a detailed description.
+
+        """
+        self.visalib.flush(self.session, mask)
 
 
 # Rohde and Schwarz Device via Passport. Not sure which Resource should be.

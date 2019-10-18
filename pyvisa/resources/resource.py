@@ -80,6 +80,11 @@ class Resource(object):
     def __init__(self, resource_manager, resource_name):
         self._resource_manager = resource_manager
         self.visalib = self._resource_manager.visalib
+
+        # We store the resource name and use preferably the private attr over
+        # the public descriptor intyernally because the public descriptor
+        # requires a live instance the VISA library, which means it is much
+        # slower but also can cause issue in error reporting in th repr.
         self._resource_name = resource_name
 
         self._logging_extra = {'library_path': self.visalib.library_path,
@@ -105,13 +110,14 @@ class Resource(object):
         self._session = value
 
     def __del__(self):
-        self.close()
+        if self._session is not None:
+            self.close()
 
     def __str__(self):
-        return "%s at %s" % (self.__class__.__name__, self.resource_name)
+        return "%s at %s" % (self.__class__.__name__, self._resource_name)
 
     def __repr__(self):
-        return "<%r(%r)>" % (self.__class__.__name__, self.resource_name)
+        return "<%r(%r)>" % (self.__class__.__name__, self._resource_name)
 
     def __enter__(self):
         return self
@@ -147,10 +153,11 @@ class Resource(object):
         """The timeout in milliseconds for all resource I/O operations.
 
         Special values:
+
         - **immediate** (``VI_TMO_IMMEDIATE``): 0
-            (for convenience, any value smaller than 1 is considered as 0)
+          (for convenience, any value smaller than 1 is considered as 0)
         - **infinite** (``VI_TMO_INFINITE``): ``float('+inf')``
-            (for convenience, None is considered as ``float('+inf')``)
+          (for convenience, None is considered as ``float('+inf')``)
 
         To set an **infinite** timeout, you can also use:
 
@@ -179,14 +186,14 @@ class Resource(object):
 
         :rtype: :class:`pyvisa.highlevel.ResourceInfo`
         """
-        return self.visalib.parse_resource_extended(self._resource_manager.session, self.resource_name)
+        return self.visalib.parse_resource_extended(self._resource_manager.session, self._resource_name)
 
     @property
     def interface_type(self):
         """The interface type of the resource as a number.
         """
         return self.visalib.parse_resource(self._resource_manager.session,
-                                           self.resource_name)[0].interface_type
+                                           self._resource_name)[0].interface_type
 
     def ignore_warning(self, *warnings_constants):
         """Ignoring warnings context manager for the current resource.
@@ -200,7 +207,9 @@ class Resource(object):
 
         :param access_mode: Specifies the mode by which the resource is to be accessed.
         :type access_mode: :class:`pyvisa.constants.AccessModes`
-        :param open_timeout: Milliseconds before the open operation times out.
+        :param open_timeout: If the ``access_mode`` parameter requests a lock, then this parameter specifies the
+                             absolute time period (in milliseconds) that the resource waits to get unlocked before this
+                             operation returns an error.
         :type open_timeout: int
         """
 
@@ -357,6 +366,7 @@ class Resource(object):
                               a new shared access key.
         :returns: A new shared access key if requested_key is None,
                   otherwise, same value as the requested_key
+
         """
         timeout = self.timeout if timeout == 'default' else timeout
         timeout = self._cleanup_timeout(timeout)
@@ -368,6 +378,7 @@ class Resource(object):
         :param timeout: Absolute time period (in milliseconds) that a resource
                         waits to get unlocked by the locking session before
                         returning an error. (Defaults to self.timeout)
+
         """
         timeout = self.timeout if timeout == 'default' else timeout
         timeout = self._cleanup_timeout(timeout)
@@ -389,7 +400,9 @@ class Resource(object):
                               is an exclusive lock.
                               Otherwise it is the access key for the shared lock or
                               None to generate a new shared access key.
+
         The returned context is the access_key if applicable.
+
         """
         if requested_key == 'exclusive':
             self.lock_excl(timeout)
