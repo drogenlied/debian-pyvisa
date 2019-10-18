@@ -18,6 +18,7 @@ import collections
 import pkgutil
 import os
 from collections import defaultdict
+from weakref import WeakSet
 
 from . import logger
 from . import constants
@@ -501,13 +502,34 @@ class VisaLibraryBase(object):
         raise NotImplementedError
 
     def flush(self, session, mask):
-        """Manually flushes the specified buffers associated with formatted I/O operations and/or serial communication.
+        """Manually flushes the specified buffers associated with formatted
+        I/O operations and/or serial communication.
 
         Corresponds to viFlush function of the VISA library.
 
         :param session: Unique logical identifier to a session.
         :param mask: Specifies the action to be taken with flushing the buffer.
-                     (Constants.READ*, .WRITE*, .IO*)
+            The following values (defined in the constants module can be
+            combined using the | operator. However multiple operations on a
+            single buffer cannot be combined.
+            - VI_READ_BUF: Discard the read buffer contents and if data was
+              present in the read buffer and no END-indicator was present,
+              read from the device until encountering an END indicator
+              (which causes the loss of data).
+            - VI_READ_BUF_DISCARD: Discard the read buffer contents (does not
+              perform any I/O to the device).
+            - VI_WRITE_BUF: Flush the write buffer by writing all buffered
+              data to the device.
+            - VI_WRITE_BUF_DISCARD: Discard the write buffer contents (does not
+              perform any I/O to the device).
+            - VI_IO_IN_BUF: Discards the receive buffer contents
+              (same as VI_IO_IN_BUF_DISCARD).
+            - VI_IO_IN_BUF_DISCARD: Discard the receive buffer contents (does
+              not perform any I/O to the device).
+            - VI_IO_OUT_BUF: Flush the transmit buffer by writing all buffered
+              data to the device.
+            - VI_IO_OUT_BUF_DISCARD: Discard the transmit buffer contents (does
+              not perform any I/O to the device).
         :return: return value of the library call.
         :rtype: :class:`pyvisa.constants.StatusCode`
         """
@@ -934,8 +956,10 @@ class VisaLibraryBase(object):
         :param resource_name: Unique symbolic name of a resource.
         :param access_mode: Specifies the mode by which the resource is to be accessed.
         :type access_mode: :class:`pyvisa.constants.AccessModes`
-        :param open_timeout: Specifies the maximum time period (in milliseconds) that this operation waits
-                             before returning an error.
+        :param open_timeout: If the ``access_mode`` parameter requests a lock, then this parameter specifies the
+                             absolute time period (in milliseconds) that the resource waits to get unlocked before this
+                             operation returns an error.
+        :type open_timeout: int
         :return: Unique logical identifier reference to a session, return value of the library call.
         :rtype: session, :class:`pyvisa.constants.StatusCode`
         """
@@ -1490,7 +1514,10 @@ def open_visa_library(specification):
         argument = specification
         wrapper = None  # Flag that we need a fallback, but avoid nested exceptions
     if wrapper is None:
-        wrapper = _get_default_wrapper()
+        if argument: # some filename given
+            wrapper = 'ni'
+        else:
+            wrapper = _get_default_wrapper()
 
     cls = get_wrapper_class(wrapper)
 
@@ -1536,6 +1563,7 @@ class ResourceManager(object):
 
         obj.visalib = visa_library
         obj.visalib.resource_manager = obj
+        obj._created_resources = WeakSet()
 
         logger.debug('Created ResourceManager with session %s',  obj.session)
         return obj
@@ -1561,7 +1589,8 @@ class ResourceManager(object):
         return '<ResourceManager(%r)>' % self.visalib
 
     def __del__(self):
-        self.close()
+        if self._session is not None:
+            self.close()
 
     def ignore_warning(self, *warnings_constants):
         """Ignoring warnings context manager for the current resource.
@@ -1580,9 +1609,13 @@ class ResourceManager(object):
 
     def close(self):
         """Close the resource manager session.
+
         """
         try:
             logger.debug('Closing ResourceManager (session: %s)', self.session)
+            # Cleanly close all resources when closing the manager.
+            for resource in self._created_resources:
+                resource.close()
             self.visalib.close(self.session)
             self.session = None
             self.visalib.resource_manager = None
@@ -1592,7 +1625,7 @@ class ResourceManager(object):
     def list_resources(self, query='?*::INSTR'):
         """Returns a tuple of all connected devices matching query.
 
-        note: The query uses the VISA Resource Regular Expression syntax - which is not the same 
+        note: The query uses the VISA Resource Regular Expression syntax - which is not the same
               as the Python regular expression syntax. (see below)
 
             The VISA Resource Regular Expression syntax is defined in the VISA Library specification:
@@ -1626,12 +1659,12 @@ class ResourceManager(object):
                         it. For example, VXI|GPIB means (VXI)|(GPIB), not VX(I|G)PIB.
 
             (exp)       Grouping characters or expressions.
-        
+
             Thus the default query, '?*::INSTR', matches any sequences of characters ending
             ending with '::INSTR'.
-        
+
         :param query: a VISA Resource Regular Expression used to match devices.
-        
+
         """
 
         return self.visalib.list_resources(self.session, query)
@@ -1639,7 +1672,7 @@ class ResourceManager(object):
     def list_resources_info(self, query='?*::INSTR'):
         """Returns a dictionary mapping resource names to resource extended
         information of all connected devices matching query.
-        
+
         For details of the VISA Resource Regular Expression syntax used in query,
         refer to list_resources().
 
@@ -1650,6 +1683,14 @@ class ResourceManager(object):
 
         return dict((resource, self.resource_info(resource))
                     for resource in self.list_resources(query))
+
+    def list_opened_resources(self):
+        """Returns a list of all the opened resources.
+
+        :return: List of resources
+        :rtype: list[:class:`pyvisa.resources.resource.Resource`]
+        """
+        return list(self._created_resources)
 
     def resource_info(self, resource_name, extended=True):
         """Get the (extended) information of a particular resource.
@@ -1671,10 +1712,13 @@ class ResourceManager(object):
                           open_timeout=constants.VI_TMO_IMMEDIATE):
         """Open the specified resource without wrapping into a class
 
-        :param resource_name: name or alias of the resource to open.
-        :param access_mode: access mode.
+        :param resource_name: Name or alias of the resource to open.
+        :param access_mode: Specifies the mode by which the resource is to be accessed.
         :type access_mode: :class:`pyvisa.constants.AccessModes`
-        :param open_timeout: time out to open.
+        :param open_timeout: If the ``access_mode`` parameter requests a lock, then this parameter specifies the
+                             absolute time period (in milliseconds) that the resource waits to get unlocked before this
+                             operation returns an error.
+        :type open_timeout: int
 
         :return: Unique logical identifier reference to a session.
         """
@@ -1687,13 +1731,16 @@ class ResourceManager(object):
                       **kwargs):
         """Return an instrument for the resource name.
 
-        :param resource_name: name or alias of the resource to open.
-        :param access_mode: access mode.
+        :param resource_name: Name or alias of the resource to open.
+        :param access_mode: Specifies the mode by which the resource is to be accessed.
         :type access_mode: :class:`pyvisa.constants.AccessModes`
-        :param open_timeout: time out to open.
-        :param resource_pyclass: resource python class to use to instantiate the Resource.
+        :param open_timeout: If the ``access_mode`` parameter requests a lock, then this parameter specifies the
+                             absolute time period (in milliseconds) that the resource waits to get unlocked before this
+                             operation returns an error.
+        :type open_timeout: int
+        :param resource_pyclass: Resource Python class to use to instantiate the Resource.
                                  Defaults to None: select based on the resource name.
-        :param kwargs: keyword arguments to be used to change instrument attributes
+        :param kwargs: Keyword arguments to be used to change instrument attributes
                        after construction.
 
         :rtype: :class:`pyvisa.resources.Resource`
@@ -1722,6 +1769,8 @@ class ResourceManager(object):
                 raise ValueError('%r is not a valid attribute for type %s' % (key, res.__class__.__name__))
 
         res.open(access_mode, open_timeout)
+
+        self._created_resources.add(res)
 
         for key, value in kwargs.items():
             setattr(res, key, value)
