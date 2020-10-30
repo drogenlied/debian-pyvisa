@@ -9,6 +9,7 @@ pyvisa (1.10.1-2) UNRELEASED; urgency=medium
   [ Debian Janitor ]
   * Remove obsolete field Name from debian/upstream/metadata (already present in
     machine-readable debian/copyright).
+  * Update standards version to 4.5.0, no changes needed.
 
  -- Ondřej Nový <onovy@debian.org>  Thu, 24 Sep 2020 08:50:56 +0200
 
