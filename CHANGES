@@ -1,9 +1,94 @@
 PyVISA Changelog
 ================
 
-1.11 (unreleased)
+1.11.3 (07-11-2020)
+-------------------
+
+1.11.2 was skipped due to an issue in the MANIFEST file.
+
+- fix MANIFEST to exclude built docs
+- fix minor typos in deprecation warning for GPIB resources
+- generate some test files on the fly to avoid issue when building conda packages
+- add official Python 3.9 support
+
+1.11.1 (30-09-2020)
+-------------------
+
+- deprecate methods that were mistakenly added to GPIB::INSTR resources PR #560
+- fix the listing of available backends (Also not that we now return the backend
+  name as can be used to create a ResourceManger) PR #545
+- allow a None value for the board value of a ResourceInfo PR #547
+  This allows for funky resource name such ASRL/dev/tty0::INSTR which are common
+  in pyvisa-py and avoid returning a completely generic resource in those cases.
+
+1.11 (16-09-2020)
 -----------------
 
+PyVISA 1.11 introduces a small backward incompatibility in the handling of
+the arguments to handlers for VISA events. The old system was tightly linked to
+the ctwrapper and not really usable as it was. As a consequence we pass
+the contents of the ctypes objects to the handler rather than the bare ctypes
+object (with the exception of the user handle for which there is no way to do
+it properly). This is a breaking change and if your code is affected you can revert
+to the old behavior by setting the environment variable PYVISA_WRAP_HANDLER=0 or
+set ctwrapper.WRAP_HANDLER to False but please consider updating to the new
+behavior.
+
+PyVISA 1.11 also removes deprecated functions and attributes that were supposed
+to be removed  in 1.10:
+
+- `ask`: use `query` instead
+- `ask_delay`: use `query_delay`
+- `ask_for_values`: use either `query_ascii_values` or `query_binary_values` as relevant
+- `write_values`: use either `write_ascii_values` or `write_binary_values` as relevant
+- `read_values`: use either `read_ascii_values` or `read_binary_values` as relevant
+- `query_values`: use either `query_ascii_values` or `query_binary_values` as relevant
+- `values_format`: has no equivalent simply pass the proper argument to either
+  the ascii or binary variant of the function (`read_xxxx_values`, `write_xxxx_values`,
+  `query_xxxx_values`)
+
+- Add support for "s" and "p" binary format which can be used to retrieve binary files
+  from instruments. PR #536
+- Convert the testsuite to use pytest PR #531
+  This is motivated by the possibility to re-use it in PyVISA-py. However since
+  unittest use inheritance to detect tests, doing so would have been clunky, pytest
+  name base detection works better for that purpose.
+- Setup Azure pipelines for self-hosted runner using Keysight tools to run an
+  extended set of tests. PR #531
+- Introduce an enumeration for special VISA timeout values PR #531
+- Provide VisaLibraryBase.handle_return_value to ease the handling of return values
+  in alternative backends PR #525
+- Transition to using dataclasses for resource name PR #525
+  This is NOT fully backward compatible if you used to index the resource name
+- Allow alternative backends to use an _ instead of a - in their name PR #525
+- Add Event class to provide a nice interface to VISA events PR #511
+- Add `wrap_handler` to provide a nicer way to write event handler PR #511
+- Add wrapper classes for events PR #511
+- Add typing to the entire codebase PR #511
+- Use black and isort on the code to homogenize style PR #511
+- Convert docstrings to use numpy formatting PR #511
+- Explicitly set attributes on resources to make the code more readable PR #511
+- Make MessageBasedResource.read_bytes break on message end when
+  `break_on_termchar` is True PR #511
+- Add support for dll_extra_paths in .pyvisarc to provide a way to specify paths
+  in which to look for dll on Windows and Python >= 3.8  PR #509
+- Drop Python 2 support PR #486
+- Limit support to Python 3.6+ PR #486
+- Improve the test suite and introduce tests relying on Keysight Virtual
+  instrument software PR #486
+- Add badges to the README PR #486
+- Improve ResourceManager.list_opened_resource to list only open resources.
+  Previously all resources created and not yet garbage collected were listed. PR #486
+- Always normalize resource names PR #486
+- Treat floating points number as double when parsing ASCII data blocks PR #486
+- Allow bound methods as handler function (the use of is in tests prevented it) PR #486
+- Deprecate some unused functions found in the util.py module PR #486
+- Warn or raise if the beginning of a binary block is not found among the first characters.
+  The default value is 25. PR #486
+- Make the library less biased towards National Instrument by referring to IVI
+  where relevant. In particular rename the @ni backend to @ivi PR #456
+- Deprecate the `visa` module that is causing issue with the VISA payment
+  processing package PR #448
 
 1.10.1 (2019-09-11)
 -------------------

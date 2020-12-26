@@ -14,8 +14,8 @@ An example
 
 Let's go *in medias res* and have a look at a simple example::
 
-    >>> import visa
-    >>> rm = visa.ResourceManager()
+    >>> import pyvisa
+    >>> rm = pyvisa.ResourceManager()
     >>> rm.list_resources()
     ('ASRL1::INSTR', 'ASRL2::INSTR', 'GPIB0::14::INSTR')
     >>> my_instrument = rm.open_resource('GPIB0::14::INSTR')
@@ -24,8 +24,8 @@ Let's go *in medias res* and have a look at a simple example::
 This example already shows the two main design goals of PyVISA: preferring
 simplicity over generality, and doing it the object-oriented way.
 
-After importing ``visa``, we create a ``ResourceManager`` object. If called
-without arguments, PyVISA will prefer the default backend (NI) which tries to
+After importing ``pyvisa``, we create a ``ResourceManager`` object. If called
+without arguments, PyVISA will prefer the default backend (IVI) which tries to
 find the VISA shared library for you. If it fails it will fall back to
 pyvisa-py if installed. You can check what backend is used and the location of
 the shared library used, if relevant, simply by:
@@ -116,7 +116,7 @@ start communicating as follows::
 Here we use `'\n'` known as 'line feed'. This is a common value, another one is
 `'\r'` i.e. 'carriage return', and in some cases the null byte '\0' is used.
 
-In in an ideal world, this will work and you will be able to get an answer from
+In an ideal world, this will work and you will be able to get an answer from
 your instrument. If it does not, it means the settings are likely wrong (the
 documentation does not always shine by its clarity). In the following we will
 discuss common debugging tricks, if nothing works feel free to post on the
@@ -174,6 +174,28 @@ too fast for it, so you can try waiting a bit before reading (using
 that does not cause any answer or actually your write does not work (go back
 up a couple of paragraph).
 
+.. note::
+
+    Some instruments may be slow in answering and may require you to either
+    increase the timeout or specify a delay between the write and read
+    operation. This can be done globally using |query_delay| or passing
+    ``delay=0.1`` for example to wait 100 ms after writing before reading.
+
+.. note::
+
+    When transferring large amount of data the total transfer time may exceed
+    the timeout value in which case increasing the timeout value should fix
+    the issue.
+
+.. note::
+
+    It is possible to disable the use of teh termination character to detect
+    the end of an input message by setting |read_termination| to ``""``. Care
+    has to be taken for the case of serial instrument for which the method used
+    to determine the end of input is controlled by the |end_input| attribute
+    and is set by default to use the termination character. To fully disable
+    the use of the termination character its value should be changed.
+
 The above focused on using only PyVISA,  if you are running Windows, or MacOS
 you are likely to have access to third party tools that can help. Some tips to
 use them are given in the next section.
@@ -196,6 +218,10 @@ The basic procedure is the one described above, if you can make it work in
 one of those tools you should be able, in most cases, to get it to work in
 PyVISA. However if it does not work using those tools, it won't work in
 PyVISA.
+
+For serial instruments (true or emulated over USB), you can also try to
+directly communicate with it using Putty or Tera Term on Windows, CoolTerm or
+Terminal / screen on macOS.
 
 
 Hopefully those simple tips will allow you to get through. In some cases, it
