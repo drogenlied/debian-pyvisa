@@ -33,6 +33,10 @@ pyvisa (1.11.3-1) UNRELEASED; urgency=medium
   * Rules-Requires-Root: no (routine-update)
   * Update watch file format version to 4.
 
+  [  ]
+  * Respect DEB_BUILD_OPTIONS in override_dh_auto_test target (routine-
+    update)
+
  --  <ruben@debmacbookvm>  Sat, 26 Dec 2020 13:13:14 +0000
 
 pyvisa (1.10.1-1) unstable; urgency=medium

@@ -23,6 +23,8 @@ override_dh_auto_clean:
 
 # FIXME
 override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+endif
 
 
 override_dh_installchangelogs:
