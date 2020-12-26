@@ -1,4 +1,4 @@
-pyvisa (1.11.3-1) UNRELEASED; urgency=medium
+pyvisa (1.11.3-1) unstable; urgency=medium
 
   [ Ondřej Nový ]
   * d/control: Update Maintainer field with new Debian Python Team
@@ -37,7 +37,7 @@ pyvisa (1.11.3-1) UNRELEASED; urgency=medium
   * Respect DEB_BUILD_OPTIONS in override_dh_auto_test target (routine-
     update)
 
- --  <ruben@debmacbookvm>  Sat, 26 Dec 2020 13:13:14 +0000
+ --  <ruben@debmacbookvm>  Sat, 26 Dec 2020 13:19:47 +0000
 
 pyvisa (1.10.1-1) unstable; urgency=medium
 
