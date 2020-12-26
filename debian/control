@@ -9,7 +9,6 @@ Build-Depends: debhelper-compat (= 13),
                python3-all,
                python3-setuptools
 Standards-Version: 4.5.1
-X-Python-Version: all
 Vcs-Browser: https://salsa.debian.org/python-team/packages/pyvisa
 Vcs-Git: https://salsa.debian.org/python-team/packages/pyvisa.git
 Homepage: https://pyvisa.readthedocs.io/
