@@ -1,5 +1,6 @@
 Source: pyvisa
 Section: python
+Testsuite: autopkgtest-pkg-python
 Priority: optional
 Maintainer: Debian Python Team <team+python@tracker.debian.org>
 Uploaders: Ruben Undheim <ruben.undheim@gmail.com>
