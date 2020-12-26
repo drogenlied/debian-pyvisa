@@ -23,6 +23,8 @@ PyVISA implements convenient and Pythonic programming in three layers:
         backends. For broader compatibility, do no use this layer. All the
         functionality should is available via the next layer.
 
+        Alternative backends have no obligation to provide those functions.
+
 
  2. Middle-level: A wrapping Python function for each function of the shared
     visa library.
@@ -52,7 +54,7 @@ given resource, you will use the |open_resource| method to obtain the
 appropriate object. If needed, you will be able to access the ``VisaLibrary``
 object directly using the |visalib| attribute.
 
-The ``VisaLibrary`` does the low-level calls. In the default NI Backend,
+The ``VisaLibrary`` does the low-level calls. In the default IVI Backend,
 levels 1 and 2 are implemented in the same package called
 :mod:`pyvisa.ctwrapper` (which stands for ctypes wrapper). This package is
 included in PyVISA.
@@ -67,8 +69,8 @@ Calling middle- and low-level functions
 
 After you have instantiated the |ResourceManager|::
 
-    >>> import visa
-    >>> rm = visa.ResourceManager()
+    >>> import pyvisa
+    >>> rm = pyvisa.ResourceManager()
 
 you can access the corresponding ``VisaLibrary`` instance under the |visalib|
 attribute.

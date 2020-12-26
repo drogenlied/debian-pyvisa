@@ -1,10 +1,32 @@
 PyVISA
 ======
 
+
+.. image:: https://github.com/pyvisa/pyvisa/workflows/Continuous%20Integration/badge.svg
+    :target: https://github.com/pyvisa/pyvisa/actions
+    :alt: Continuous integration
+.. image:: https://github.com/pyvisa/pyvisa/workflows/Documentation%20building/badge.svg
+    :target: https://github.com/pyvisa/pyvisa/actions
+    :alt: Documentation building
+.. image:: https://dev.azure.com/pyvisa/pyvisa/_apis/build/status/pyvisa.keysight-assisted?branchName=master
+    :target: https://dev.azure.com/pyvisa/pyvisa/_build
+    :alt: Keysight assisted testing
+.. image:: https://codecov.io/gh/pyvisa/pyvisa/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/pyvisa/pyvisa
+    :alt: Code Coverage
+.. image:: https://readthedocs.org/projects/pyvisa/badge/?version=latest
+    :target: https://pyvisa.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+.. image:: https://img.shields.io/pypi/l/PyVISA
+    :target: https://pypi.python.org/pypi/pyvisa
+    :alt: PyPI - License
+.. image:: https://img.shields.io/pypi/v/PyVISA
+    :target: https://pypi.python.org/pypi/pyvisa
+    :alt: PyPI
+
 A Python package for support of the "Virtual Instrument Software
 Architecture" (VISA), in order to control measurement devices and
 test equipment via GPIB, RS232, Ethernet or USB.
-
 
 Description
 -----------
@@ -54,15 +76,8 @@ controlling:
 Requirements
 ------------
 
-- Python (tested with 2.7 and 3.4+)
-- VISA (tested with NI-VISA 17.5, Win7, from www.ni.com/visa)
-
-Python 2 support
-----------------
-
-Python 2 EOL is now near (January 1st 2020), and given the limited time
-maintainers have, the next release of PyVISA (1.10) to be released around July
-2019 will be the last version of PyVISA supporting Python 2.
+- Python (tested with 3.6+)
+- VISA (tested with NI-VISA 17.5, Win7, from www.ni.com/visa and Keysight-VISA )
 
 Installation
 --------------

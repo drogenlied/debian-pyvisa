@@ -36,8 +36,8 @@ I have an error in my program and I am having trouble to fix it
 PyVISA provides useful logs of all operations. Add the following commands to
 your program and run it again::
 
-    import visa
-    visa.log_to_screen()
+    import pyvisa
+    pyvisa.log_to_screen()
 
 
 I found a bug, how can I report it?
@@ -47,7 +47,7 @@ Please report it on the `Issue Tracker`_, including operating system, python
 version and library version. In addition you might add supporting information
 by pasting the output of this command::
 
-    python -m visa info
+    pyvisa-info
 
 
 Error: Image not found
@@ -71,6 +71,16 @@ or::
     >>> rm = ResourceManager('Path to library')
 
 or creating a configuration file as described in :ref:`intro-configuring`.
+
+
+Error: `visa` module has no attribute `ResourceManager`
+-------------------------------------------------------
+
+The https://github.com/visa-sdk/visa-python provides a visa package that can
+conflict with :py:mod:`visa` module provided by PyVISA, which is why the
+:py:mod:`visa` module is deprecated and it is preferred to import
+:py:mod:`pyvisa` instead of :py:mod:`visa`. Both modules provides the
+same interface and no other changes should be needed.
 
 
 Error: No matching architecture
@@ -98,7 +108,7 @@ architecture.
 First, determine the details of your installation with the help of the
 following debug command::
 
-    python -m visa info
+    pyvisa-info
 
 You will see the 'bitness' of the Python interpreter and at the end you will
 see the list of VISA libraries that PyVISA was able to find.
@@ -142,6 +152,28 @@ or
      You can also create a `virtual environment`_ for this.
 
 
+OSError: Could not open VISA library: function 'viOpen' not found
+-----------------------------------------------------------------
+
+Starting with Python 3.8, the .dll load behavior has changed on Windows (see
+`https://docs.python.org/3/whatsnew/3.8.html#bpo-36085-whatsnew`_). This causes
+some versions of Keysight VISA to fail to load because it cannot find its .dll
+dependencies. You can solve it by creating a configuration file and setting `dll_extra_paths`
+as described in :ref:`intro-configuring`.
+
+
+VisaIOError: VI_ERROR_SYSTEM_ERROR: Unknown system error:
+---------------------------------------------------------
+
+If you have an issue creating a pyvisa.ResourceManager object, first enable screen 
+logging (pyvisa.log_to_screen()) to ensure it is correctly finding the dll files.
+If it is correctly finding the dlls, you may see an error similar to:
+*  viOpenDefaultRM('<ViObject object at 0x000002B6CA4658C8>',) -> -1073807360
+This issue was resolved by reinstalling python. It seems that something within the ctypes
+may have been corrupted.
+[https://github.com/pyvisa/pyvisa/issues/538]
+
+
 Where can I get more information about VISA?
 --------------------------------------------
 
@@ -176,3 +208,6 @@ Where can I get more information about VISA?
 .. _`AUTHORS`: https://github.com/pyvisa/pyvisa/blob/master/AUTHORS
 .. _`Issue Tracker`: https://github.com/pyvisa/pyvisa/issues
 .. _`virtual environment`: http://www.virtualenv.org/en/latest/
+
+.. _`https://docs.python.org/3/whatsnew/3.8.html#bpo-36085-whatsnew`:
+       https://docs.python.org/3/whatsnew/3.8.html#bpo-36085-whatsnew
