@@ -2,11 +2,18 @@ pyvisa (1.11.3-1) unstable; urgency=medium
 
   * New upstream version
   * debhelper-compat 13
+  * debian/copyright:
+    - Remove copyright information for deleted files
   * debian/control:
     - Drop ancient X-Python-Version field
+    - New build-dependencies: python3-setuptools-scm, python3-pytest,
+      python3-typing-extensions
+    - New install dependency: python3-pyvisa-py (>= 0.5)
     - Rules-Requires-Root:
     - Standards-Version: 4.5.1
     - Testsuite: autopkgtest-pkg-python
+  * debian/patches/0001-Skip-unreliable-tests.patch:
+    - Two tests are unreliable in the new upstream delivery. Skip them
   * debian/rules:
     - Respect DEB_BUILD_OPTIONS in override_dh_auto_test target (routine-
       update)
