@@ -1,5 +1,19 @@
 pyvisa (1.11.3-1) unstable; urgency=medium
 
+  * New upstream version
+  * debhelper-compat 13
+  * debian/control:
+    - Drop ancient X-Python-Version field
+    - Rules-Requires-Root:
+    - Standards-Version: 4.5.1
+    - Testsuite: autopkgtest-pkg-python
+  * debian/rules:
+    - Respect DEB_BUILD_OPTIONS in override_dh_auto_test target (routine-
+      update)
+  * Add debian/salsa-ci.yaml
+  * debian/watch:
+    - Update watch file format version to 4.
+
   [ Ondřej Nový ]
   * d/control: Update Maintainer field with new Debian Python Team
     contact address.
@@ -10,32 +24,6 @@ pyvisa (1.11.3-1) unstable; urgency=medium
   * Remove obsolete field Name from debian/upstream/metadata (already present in
     machine-readable debian/copyright).
   * Update standards version to 4.5.0, no changes needed.
-
-  [  ]
-  * New upstream version
-
-  [  ]
-  * Standards-Version: 4.5.1 (routine-update)
-
-  [  ]
-  * debhelper-compat 13 (routine-update)
-
-  [  ]
-  * Testsuite: autopkgtest-pkg-python (routine-update)
-
-  [  ]
-  * Drop ancient X-Python-Version field (routine-update)
-
-  [  ]
-  * Add salsa-ci file (routine-update)
-
-  [  ]
-  * Rules-Requires-Root: no (routine-update)
-  * Update watch file format version to 4.
-
-  [  ]
-  * Respect DEB_BUILD_OPTIONS in override_dh_auto_test target (routine-
-    update)
 
  -- Ruben Undheim <ruben.undheim@gmail.com>  Sat, 26 Dec 2020 14:19:47 +0100
 
