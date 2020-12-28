@@ -1,3 +1,11 @@
+pyvisa (1.11.3-2) unstable; urgency=medium
+
+  * debian/control:
+    - Change from Depends to Recommends: python3-pyvisa-py
+      to prevent a cyclic dependency causing deadlock when building.
+
+ -- Ruben Undheim <ruben.undheim@gmail.com>  Mon, 28 Dec 2020 13:07:36 +0100
+
 pyvisa (1.11.3-1) unstable; urgency=medium
 
   * New upstream version

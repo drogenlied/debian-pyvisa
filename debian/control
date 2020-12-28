@@ -22,7 +22,7 @@ Architecture: all
 Depends: python3-pkg-resources,
          ${python3:Depends},
          ${misc:Depends},
-         python3-pyvisa-py (>= 0.5)
+Recommends: python3-pyvisa-py (>= 0.5)
 Suggests: libvisa0
 Description: Python 3 bindings for Virtual Instrument Software Architecture
  The VISA standard provides a common interface for communication with test
