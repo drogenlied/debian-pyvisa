@@ -1,3 +1,11 @@
+pyvisa (1.13.0-1) UNRELEASED; urgency=medium
+
+  * Non-maintainer upload.
+  * watch file
+  * New upstream version
+
+ -- Jan Binder <jan.binder@flunder>  Sun, 11 Jun 2023 16:50:56 +0200
+
 pyvisa (1.11.3-3) unstable; urgency=medium
 
   [ Debian Janitor ]
