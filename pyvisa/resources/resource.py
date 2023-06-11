@@ -3,13 +3,12 @@
 
 This file is part of PyVISA.
 
-:copyright: 2014-2020 by PyVISA Authors, see AUTHORS for more details.
+:copyright: 2014-2022 by PyVISA Authors, see AUTHORS for more details.
 :license: MIT, see LICENSE for more details.
 
 """
 import contextlib
 import time
-import warnings
 from functools import update_wrapper
 from typing import (
     Any,
@@ -65,24 +64,6 @@ class WaitResponse:
         self.ret = ret
         self._visalib = visalib
         self.timed_out = timed_out
-
-    @property
-    def event_type(self) -> Optional[constants.EventType]:
-        warnings.warn(
-            "event_type is deprecated and will be removed in 1.12. "
-            "Use the event object instead.",
-            FutureWarning,
-        )
-        return self._event_type
-
-    @property
-    def context(self) -> Optional[VISAEventContext]:
-        warnings.warn(
-            "context is deprecated and will be removed in 1.12. "
-            "Use the event object instead to access the event attributes.",
-            FutureWarning,
-        )
-        return self._context
 
     def __del__(self) -> None:
         if self.event._context is not None:
@@ -226,6 +207,10 @@ class Resource(object):
 
     #: VISA attributes require the resource to be opened in order to get accessed.
     #: Please have a look at the attributes definition for more details
+
+    # VI_ATTR_RM_SESSION is not implemented as resource property,
+    # use .resource_manager.session instead
+    # resource_manager_session: Attribute[int] = attributes.AttrVI_ATTR_RM_SESSION()
 
     #: Interface type of the given session.
     interface_type: Attribute[

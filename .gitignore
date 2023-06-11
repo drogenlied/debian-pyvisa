@@ -19,3 +19,7 @@ _test/
 htmlcov/
 .mypy_cache/
 pip-wheel-metadata/
+.pytest_cache
+.venv/
+venv/
+.dmypy.json

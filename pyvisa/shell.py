@@ -4,7 +4,7 @@
 
 This file is taken from the Lantz Project.
 
-:copyright: (c) 2014-2020 by PyVISA Authors, see AUTHORS for more details.
+:copyright: (c) 2014-2022 by PyVISA Authors, see AUTHORS for more details.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -122,7 +122,7 @@ class VisaShell(cmd.Cmd):
             self.prompt = self.default_prompt
 
     def do_query(self, args):
-        """Query resource in use: query *IDN? """
+        """Query resource in use: query *IDN?"""
 
         if not self.current:
             print('There are no resources in use. Use the command "open".')
@@ -146,7 +146,7 @@ class VisaShell(cmd.Cmd):
             print(e)
 
     def do_write(self, args):
-        """Send to the resource in use: send *IDN? """
+        """Send to the resource in use: send *IDN?"""
 
         if not self.current:
             print('There are no resources in use. Use the command "open".')
@@ -328,7 +328,7 @@ class VisaShell(cmd.Cmd):
 
         if not args:
             try:
-                charmap = {u"\r": "CR", u"\n": "LF", u"\r\n": "CRLF", u"\0": "NUL"}
+                charmap = {"\r": "CR", "\n": "LF", "\r\n": "CRLF", "\0": "NUL"}
                 chr = self.current.read_termination
                 if chr in charmap:
                     chr = charmap[chr]
@@ -349,10 +349,10 @@ class VisaShell(cmd.Cmd):
             )
         else:
             charmap = {
-                "CR": u"\r",
-                "LF": u"\n",
-                "CRLF": u"\r\n",
-                "NUL": u"\0",
+                "CR": "\r",
+                "LF": "\n",
+                "CRLF": "\r\n",
+                "NUL": "\0",
                 "None": None,
             }
             chr = args[0]

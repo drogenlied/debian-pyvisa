@@ -3,17 +3,12 @@
 
 This file is part of PyVISA.
 
-:copyright: 2014-2020 by PyVISA Authors, see AUTHORS for more details.
+:copyright: 2014-2022 by PyVISA Authors, see AUTHORS for more details.
 :license: MIT, see LICENSE for more details.
 
 """
 import logging
-import sys
-
-if sys.version_info >= (3, 8):
-    from importlib.metadata import version, PackageNotFoundError
-else:
-    from importlib_metadata import version, PackageNotFoundError  # type: ignore
+from importlib.metadata import PackageNotFoundError, version
 
 # Defined here since it is imported in other pyvisa modules
 logger = logging.getLogger("pyvisa")

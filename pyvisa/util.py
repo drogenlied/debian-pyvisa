@@ -3,7 +3,7 @@
 
 This file is part of PyVISA.
 
-:copyright: 2014-2020 by PyVISA Authors, see AUTHORS for more details.
+:copyright: 2014-2022 by PyVISA Authors, see AUTHORS for more details.
 :license: MIT, see LICENSE for more details.
 
 """
@@ -18,6 +18,7 @@ import subprocess
 import sys
 import warnings
 from collections import OrderedDict
+from types import ModuleType
 from typing import (
     Any,
     Callable,
@@ -36,8 +37,11 @@ from typing_extensions import Literal
 
 from . import constants, logger
 
+np: Optional[ModuleType]
 try:
-    import numpy as np  # type: ignore
+    import numpy
+
+    np = numpy
 except ImportError:
     np = None
 
@@ -228,40 +232,6 @@ def cleanup_timeout(timeout: Optional[Union[int, float]]) -> int:
     return timeout
 
 
-def warn_for_invalid_kwargs(keyw, allowed_keys):  # pragma: no cover
-    warnings.warn("warn_for_invalid_kwargs will be removed in 1.12", FutureWarning)
-    for key in keyw.keys():
-        if key not in allowed_keys:
-            warnings.warn('Keyword argument "%s" unknown' % key, stacklevel=3)
-
-
-def filter_kwargs(keyw, selected_keys):  # pragma: no cover
-    warnings.warn("warn_for_invalid_kwargs will be removed in 1.12", FutureWarning)
-    result = {}
-    for key, value in keyw.items():
-        if key in selected_keys:
-            result[key] = value
-    return result
-
-
-def split_kwargs(keyw, self_keys, parent_keys, warn=True):  # pragma: no cover
-    warnings.warn("warn_for_invalid_kwargs will be removed in 1.12", FutureWarning)
-    self_kwargs = dict()
-    parent_kwargs = dict()
-    self_keys = set(self_keys)
-    parent_keys = set(parent_keys)
-    all_keys = self_keys | parent_keys
-    for key, value in keyw.items():
-        if warn and key not in all_keys:
-            warnings.warn('Keyword argument "%s" unknown' % key, stacklevel=3)
-        if key in self_keys:
-            self_kwargs[key] = value
-        if key in parent_keys:
-            parent_kwargs[key] = value
-
-    return self_kwargs, parent_kwargs
-
-
 _converters: Dict[str, Callable[[str], Any]] = {
     "s": str,
     "b": functools.partial(int, base=2),
@@ -332,6 +302,7 @@ def from_ascii_block(
         and isinstance(separator, str)
         and converter in _np_converters
     ):
+        assert np  # for typing
         return np.fromstring(ascii_data, _np_converters[converter], sep=separator)
 
     if isinstance(converter, str):
@@ -346,6 +317,8 @@ def from_ascii_block(
     data: Iterable[str]
     if isinstance(separator, str):
         data = ascii_data.split(separator)
+        if not data[-1]:
+            data = data[:-1]
     else:
         data = separator(ascii_data)
 
@@ -467,7 +440,7 @@ def parse_ieee_block_header(
     else:
         # #0DATA
         # 012
-        data_length = 0
+        data_length = -1
 
     return offset, data_length
 
@@ -475,7 +448,7 @@ def parse_ieee_block_header(
 def parse_hp_block_header(
     block: Union[bytes, bytearray],
     is_big_endian: bool,
-    length_before_block: int = None,
+    length_before_block: Optional[int] = None,
     raise_on_late_block: bool = False,
 ) -> Tuple[int, int]:
     """Parse the header of a HP block.
@@ -577,7 +550,7 @@ def from_ieee_block(
 
     # If the data length is not reported takes all the data and do not make
     # any assumption about the termination character
-    if data_length == 0:
+    if data_length == -1:
         data_length = len(block) - offset
 
     if len(block) < offset + data_length:
@@ -626,11 +599,6 @@ def from_hp_block(
 
     """
     offset, data_length = parse_hp_block_header(block, is_big_endian)
-
-    # If the data length is not reported takes all the data and do not make
-    # any assumption about the termination character
-    if data_length == 0:
-        data_length = len(block) - offset
 
     if len(block) < offset + data_length:
         raise ValueError(
@@ -687,6 +655,7 @@ def from_binary_block(
     endianess = ">" if is_big_endian else "<"
 
     if _use_numpy_routines(container):
+        assert np  # for typing
         return np.frombuffer(block, endianess + datatype, array_length, offset)
 
     fullfmt = "%s%d%s" % (endianess, array_length, datatype)
@@ -703,7 +672,7 @@ def from_binary_block(
 
 
 def to_binary_block(
-    iterable: Sequence[Union[int, float]],
+    iterable: Union[bytes, bytearray, Sequence[Union[int, float]]],
     header: Union[str, bytes],
     datatype: BINARY_DATATYPES,
     is_big_endian: bool,
@@ -727,12 +696,27 @@ def to_binary_block(
         Binary block of data preceded by the specified header
 
     """
-    array_length = len(iterable)
-    endianess = ">" if is_big_endian else "<"
-    fullfmt = "%s%d%s" % (endianess, array_length, datatype)
-
     if isinstance(header, str):
-        header = bytes(header, "ascii")
+        header = header.encode("ascii")
+
+    if isinstance(iterable, (bytes, bytearray)):
+        if datatype not in "sbB":
+            warnings.warn(
+                "Using the formats 's', 'p', 'b' or 'B' is more efficient when "
+                "directly writing bytes",
+                UserWarning,
+            )
+        else:
+            return header + iterable
+
+    endianess = ">" if is_big_endian else "<"
+
+    if _use_numpy_routines(type(iterable)):
+        assert np and isinstance(iterable, np.ndarray)  # For typing
+        return header + iterable.astype(endianess + datatype).tobytes()
+
+    array_length = len(iterable)
+    fullfmt = "%s%d%s" % (endianess, array_length, datatype)
 
     if datatype in ("s", "p"):
         block = struct.pack(fullfmt, iterable)
@@ -808,7 +792,14 @@ def to_hp_block(
     return to_binary_block(iterable, header, datatype, is_big_endian)
 
 
-def get_system_details(backends: bool = True) -> Dict[str, str]:
+# The actual value would be:
+# DebugInfo = Union[List[str], Dict[str, Union[str, DebugInfo]]]
+DebugInfo = Union[List[str], Dict[str, Any]]
+
+
+def get_system_details(
+    backends: bool = True,
+) -> Dict[str, Union[str, Dict[str, DebugInfo]]]:
     """Return a dictionary with information about the system."""
     buildno, builddate = platform.python_build()
     if sys.maxunicode == 65535:
@@ -821,7 +812,8 @@ def get_system_details(backends: bool = True) -> Dict[str, str]:
 
     from . import __version__
 
-    d = {
+    backend_details: Dict[str, DebugInfo] = OrderedDict()
+    d: Dict[str, Union[str, dict]] = {
         "platform": platform.platform(),
         "processor": platform.processor(),
         "executable": sys.executable,
@@ -833,7 +825,7 @@ def get_system_details(backends: bool = True) -> Dict[str, str]:
         "unicode": unitype,
         "bits": bits,
         "pyvisa": __version__,
-        "backends": OrderedDict(),
+        "backends": backend_details,
     }
 
     if backends:
@@ -846,16 +838,16 @@ def get_system_details(backends: bool = True) -> Dict[str, str]:
             try:
                 cls = highlevel.get_wrapper_class(backend)
             except Exception as e:
-                d["backends"][backend] = [
+                backend_details[backend] = [
                     "Could not instantiate backend",
                     "-> %s" % str(e),
                 ]
                 continue
 
             try:
-                d["backends"][backend] = cls.get_debug_info()
+                backend_details[backend] = cls.get_debug_info()
             except Exception as e:
-                d["backends"][backend] = [
+                backend_details[backend] = [
                     "Could not obtain debug info",
                     "-> %s" % str(e),
                 ]
@@ -944,17 +936,6 @@ def get_debug_info(to_screen=True):
     if not to_screen:
         return out
     print(out)
-
-
-def pip_install(package):  # pragma: no cover
-    warnings.warn("warn_for_invalid_kwargs will be removed in 1.12", FutureWarning)
-    try:
-        import pip  # type: ignore
-
-        return pip.main(["install", package])
-    except ImportError:
-        print(system_details_to_str(get_system_details()))
-        raise RuntimeError("Please install pip to continue.")
 
 
 machine_types = {

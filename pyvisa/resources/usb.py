@@ -3,7 +3,7 @@
 
 This file is part of PyVISA.
 
-:copyright: 2014-2020 by PyVISA Authors, see AUTHORS for more details.
+:copyright: 2014-2022 by PyVISA Authors, see AUTHORS for more details.
 :license: MIT, see LICENSE for more details.
 
 """
@@ -118,7 +118,7 @@ class USBInstrument(ControlRenMixin, USBCommon):
         index : int
             wIndex parameter of the setup stage of a USB control transfer.
             This is usually the index of the interface or endpoint.
-        data : str
+        data : bytes
             The data buffer that sends the data in the optional data stage of
             the control transfer.
 

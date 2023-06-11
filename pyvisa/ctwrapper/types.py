@@ -8,7 +8,7 @@ All data types that are defined by VPP-4.3.2.
 The module exports all data types including the pointer and array types.  This
 means "ViUInt32" and such.
 
-:copyright: 2014-2020 by PyVISA Authors, see AUTHORS for more details.
+:copyright: 2014-2022 by PyVISA Authors, see AUTHORS for more details.
 :license: MIT, see LICENSE for more details.
 
 """
@@ -110,6 +110,7 @@ ViBusAddress, ViPBusAddress = _type_pair(ViUInt32)
 ViBusAddress64, ViPBusAddress64 = _type_pair(ViUInt64)
 
 ViBusSize = ViUInt32
+ViBusSize64 = ViUInt64
 
 ViAttrState, ViPAttrState = _type_pair(ViUInt32)
 

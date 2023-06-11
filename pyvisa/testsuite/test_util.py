@@ -10,9 +10,12 @@ import struct
 import subprocess
 import sys
 import tempfile
+import unittest
 from configparser import ConfigParser
 from functools import partial
 from io import StringIO
+from types import ModuleType
+from typing import Optional
 
 import pytest
 
@@ -20,8 +23,11 @@ from pyvisa import highlevel, util
 from pyvisa.ctwrapper import IVIVisaLibrary
 from pyvisa.testsuite import BaseTestCase
 
+np: Optional[ModuleType]
 try:
-    import numpy as np  # type: ignore
+    import numpy
+
+    np = numpy
 except ImportError:
     np = None
 
@@ -38,7 +44,9 @@ class TestConfigFile(BaseTestCase):
                 os.path.join(os.path.expanduser("~"), ".pyvisarc"),
             ]
         ):
-            self.skipTest(".pyvisarc file exists cannot properly test in this case")
+            raise unittest.SkipTest(
+                ".pyvisarc file exists cannot properly test in this case"
+            )
         self.temp_dir = tempfile.TemporaryDirectory()
         os.makedirs(os.path.join(self.temp_dir.name, "share", "pyvisa"))
         self.config_path = os.path.join(
@@ -158,7 +166,7 @@ class TestConfigFile(BaseTestCase):
 class TestParser(BaseTestCase):
     def test_parse_binary(self):
         s = (
-            b"#A@\xe2\x8b<@\xe2\x8b<@\xe2\x8b<@\xe2\x8b<@\xde\x8b<@\xde\x8b<@"
+            b"#0@\xe2\x8b<@\xe2\x8b<@\xe2\x8b<@\xe2\x8b<@\xde\x8b<@\xde\x8b<@"
             b"\xde\x8b<@\xde\x8b<@\xe0\x8b<@\xe0\x8b<@\xdc\x8b<@\xde\x8b<@"
             b"\xe2\x8b<@\xe0\x8b<"
         )
@@ -189,6 +197,10 @@ class TestParser(BaseTestCase):
         for a, b in zip(p, e):
             assert a == pytest.approx(b)
 
+        # Test handling zero length block
+        p = util.from_ieee_block(b"#10" + s[2:], datatype="f", is_big_endian=False)
+        assert not p
+
         p = util.from_hp_block(
             b"#A\x0e\x00" + s[2:],
             datatype="f",
@@ -203,7 +215,8 @@ class TestParser(BaseTestCase):
         for fmt in "d":
             msg = "block=%s, fmt=%s"
             msg = msg % ("ascii", fmt)
-            tb = lambda values: util.to_ascii_block(values, fmt, ",")
+            # Test handling the case of a trailing comma
+            tb = lambda values: util.to_ascii_block(values, fmt, ",") + ","
             fb = lambda block, cont: util.from_ascii_block(block, fmt, ",", cont)
             self.round_trip_block_conversion(values, tb, fb, msg)
 
@@ -281,10 +294,10 @@ class TestParser(BaseTestCase):
             (util.to_ieee_block, util.to_hp_block),
             (util.from_ieee_block, util.from_hp_block),
         ):
-            for fmt in "sp":
-                block = tb(values, datatype="s")
-                print(block)
-                rt = fb(block, datatype="s", container=bytes)
+            for fmt in "sbB":
+                block = tb(values, datatype=fmt)
+                print(fmt, block)
+                rt = fb(block, datatype=fmt, container=bytes)
                 assert values == rt
 
     def test_malformed_binary_block_header(self):
@@ -374,7 +387,7 @@ class TestParser(BaseTestCase):
                 block = block[:2] + b"0" * header_length + block[2 + header_length :]
             else:
                 block = block[:2] + b"\x00\x00\x00\x00" + block[2 + 4 :]
-            assert fb(block, "h", False, list) == values
+            assert not fb(block, "h", False, list)
 
     def test_handling_malformed_binary(self):
         containers = (list, tuple) + ((np.array, np.ndarray) if np else ())
