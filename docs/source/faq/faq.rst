@@ -57,11 +57,12 @@ This error occurs when you have provided an invalid path for the VISA library.
 Check that the path provided to the constructor or in the configuration file
 
 
-Error: Could not found VISA library
------------------------------------
+Error: Could not find VISA library
+----------------------------------
 
 This error occurs when you have not provided a path for the VISA library and
-PyVISA is not able to find it for you. You can solve it by providing the
+PyVISA is not able to find it for you. You can solve it by creating a configuration
+file as described in :ref:`intro-configuring` (recommended) or by providing the
 library path to the ``VisaLibrary`` or ``ResourceManager`` constructor::
 
     >>> visalib = VisaLibrary('/path/to/library')
@@ -70,7 +71,32 @@ or::
 
     >>> rm = ResourceManager('Path to library')
 
-or creating a configuration file as described in :ref:`intro-configuring`.
+.. note::
+
+   If you get this error while trying to create a ``ResourceManager`` in Python built
+   for Cygwin (https://www.cygwin.com/) on Windows:
+
+     1. Check you are running the Cygwin build of Python by running ``python -VV``. If not, follow
+        the troubleshooting steps for Windows::
+
+           $ python -VV
+           Python 3.9.10 (main, Jan 20 2022, 21:37:52)
+           [GCC 11.2.0]
+
+     2. Specify the location of the ``visa32.dll`` or ``visa64.dll`` using the ``linux`` syntax
+        and Cygwin paths by creating a `.pyvisarc` (:ref:`intro-configuring`) file::
+
+           $ cat ~/.pyvisarc
+           [Paths]
+           VISA library: /cygdrive/c/Windows/System32/visa64.dll
+
+        or::
+
+           rm = visa.ResourceManager('/cygdrive/c/Windows/System32/visa64.dll')
+
+        or::
+
+           rm = visa.ResourceManager('/cygdrive/c/Windows/System32/visa32.dll')
 
 
 Error: `visa` module has no attribute `ResourceManager`
@@ -165,7 +191,7 @@ as described in :ref:`intro-configuring`.
 VisaIOError: VI_ERROR_SYSTEM_ERROR: Unknown system error:
 ---------------------------------------------------------
 
-If you have an issue creating a pyvisa.ResourceManager object, first enable screen 
+If you have an issue creating a pyvisa.ResourceManager object, first enable screen
 logging (pyvisa.log_to_screen()) to ensure it is correctly finding the dll files.
 If it is correctly finding the dlls, you may see an error similar to:
 *  viOpenDefaultRM('<ViObject object at 0x000002B6CA4658C8>',) -> -1073807360
@@ -205,7 +231,7 @@ Where can I get more information about VISA?
        http://digital.ni.com/manuals.nsf/websearch/266526277DFF74F786256ADC0065C50C
 
 
-.. _`AUTHORS`: https://github.com/pyvisa/pyvisa/blob/master/AUTHORS
+.. _`AUTHORS`: https://github.com/pyvisa/pyvisa/blob/main/AUTHORS
 .. _`Issue Tracker`: https://github.com/pyvisa/pyvisa/issues
 .. _`virtual environment`: http://www.virtualenv.org/en/latest/
 

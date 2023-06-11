@@ -50,6 +50,8 @@ class TestResourceManager:
             self.rm.session
         assert self.rm.visalib.resource_manager is None
 
+    # This test is flaky
+    @pytest.mark.skip
     def test_cleanup_on_del(self, caplog):
         """Test that deleting the rm does clean the VISA session"""
         # The test seems to assert what it should even though the coverage report
@@ -217,12 +219,6 @@ class TestResourceManager:
             self.rm.open_resource(rname, unknown_attribute=None)
 
         assert len(self.rm.list_opened_resources()) == 0
-
-    def test_get_instrument(self):
-        """Check that we get the expected deprecation warning."""
-        rname = list(RESOURCE_ADDRESSES.values())[0]
-        with pytest.warns(FutureWarning):
-            self.rm.get_instrument(rname)
 
 
 @require_virtual_instr

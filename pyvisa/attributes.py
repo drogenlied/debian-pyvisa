@@ -6,7 +6,7 @@ possible values for each attributes.
 
 This file is part of PyVISA.
 
-:copyright: 2014-2020 by PyVISA Authors, see AUTHORS for more details.
+:copyright: 2014-2022 by PyVISA Authors, see AUTHORS for more details.
 :license: MIT, see LICENSE for more details.
 
 """
@@ -238,6 +238,38 @@ class EnumAttribute(Attribute):
         return value
 
 
+class FlagAttribute(Attribute):
+    """Class for attributes with Flag values that map to a PyVISA Enum."""
+
+    #: Enum type with valid values.
+    enum_type: ClassVar[Type[enum.IntFlag]]
+
+    @classmethod
+    def redoc(cls) -> None:
+        """Add the enum member to the docstring."""
+        super(FlagAttribute, cls).redoc()
+        cls.__doc__ += "\n:type: :class:%s.%s" % (
+            cls.enum_type.__module__,
+            cls.enum_type.__name__,
+        )
+
+    def post_get(self, value: Any) -> enum.IntFlag:
+        """Convert the VISA value to the proper enum member."""
+        return self.enum_type(value)
+
+    def pre_set(self, value: enum.IntFlag) -> Any:
+        """Validate the value passed against the enum."""
+        # Python 3.8 raise if a non-Enum is used for value
+        try:
+            value = self.enum_type(value)
+        except ValueError:
+            raise ValueError(
+                "%r is an invalid value for attribute %s, "
+                "should be a %r" % (value, self.visa_name, self.enum_type)
+            )
+        return value
+
+
 class IntAttribute(Attribute):
     """Class for attributes with integers values."""
 
@@ -357,8 +389,21 @@ class CharAttribute(Attribute):
 # --- Session attributes ---------------------------------------------------------------
 # Attributes are in the same order as in the constants.ResourceAttribute enum
 
-# VI_ATTR_RM_SESSION is not implemented as resource property,
-# use .resource_manager.session instead
+
+class AttrVI_ATTR_RM_SESSION(Attribute):
+    """Specifies the session of the Resource Manager used to open this session."""
+
+    resources = AllSessionTypes
+
+    py_name = ""
+
+    visa_name = "VI_ATTR_RM_SESSION"
+
+    visa_type = "ViSession"
+
+    default = NotAvailable
+
+    read, write, local = True, False, False
 
 
 class AttrVI_ATTR_INTF_TYPE(EnumAttribute):
@@ -1260,7 +1305,7 @@ class AttrVI_ATTR_TCPIP_HISLIP_MAX_MESSAGE_KB(RangeAttribute):
 
     visa_name = "VI_ATTR_TCPIP_HISLIP_MAX_MESSAGE_KB"
 
-    visa_type = "ViUint32"
+    visa_type = "ViUInt32"
 
     default = 1024
 
@@ -1612,7 +1657,7 @@ class AttrVI_ATTR_ASRL_STOP_BITS(EnumAttribute):
     enum_type = constants.StopBits
 
 
-class AttrVI_ATTR_ASRL_FLOW_CNTRL(EnumAttribute):
+class AttrVI_ATTR_ASRL_FLOW_CNTRL(FlagAttribute):
     """Indicate the type of flow control used by the transfer mechanism."""
 
     resources = [(constants.InterfaceType.asrl, "INSTR")]
@@ -1623,7 +1668,7 @@ class AttrVI_ATTR_ASRL_FLOW_CNTRL(EnumAttribute):
 
     visa_type = "ViUInt16"
 
-    default = constants.VI_ASRL_FLOW_NONE
+    default = constants.ControlFlow.none
 
     read, write, local = True, True, False
 
@@ -2690,7 +2735,7 @@ class AttrVI_ATTR_FDC_MODE(RangeAttribute):
     min_value, max_value, values = 0, 65535, None
 
 
-class AttrVVI_ATTR_FDC_GEN_SIGNAL_EN(BooleanAttribute):
+class AttrVI_ATTR_FDC_GEN_SIGNAL_EN(BooleanAttribute):
     """Fast Data Channel (FDC) signal enable."""
 
     resources = [(constants.InterfaceType.vxi, "INSTR")]
@@ -2699,7 +2744,7 @@ class AttrVVI_ATTR_FDC_GEN_SIGNAL_EN(BooleanAttribute):
 
     visa_name = "VI_ATTR_FDC_GEN_SIGNAL_EN"
 
-    visa_type = "ViBool"
+    visa_type = "ViBoolean"
 
     default = NotAvailable
 
@@ -2833,7 +2878,7 @@ class AttrVI_ATTR_MEM_SIZE(RangeAttribute):
 
     visa_name = "VI_ATTR_MEM_SIZE"
 
-    visa_type = "ViBusSize64" if constants.is_64bits else "ViUInt32"
+    visa_type = "ViBusSize64" if constants.is_64bits else "ViBusSize"
 
     default = NotAvailable
 
@@ -3069,26 +3114,25 @@ class AttrVI_ATTR_VXI_TRIG_SUPPORT(RangeAttribute):
     min_value, max_value, values = 0, 4294967295, None
 
 
-# GPIB-VXI is not supported
-# class AttrVI_ATTR_INTF_PARENT_NUM(RangeAttribute):
-#     """This attribute shows the current state of the VXI/VME interrupt lines.
-#     This is a bit vector with bits 0-6 corresponding to interrupt
-#     lines 1-7.
-#     """
+class AttrVI_ATTR_INTF_PARENT_NUM(RangeAttribute):
+    """This attribute shows the current state of the VXI/VME interrupt lines.
+    This is a bit vector with bits 0-6 corresponding to interrupt
+    lines 1-7.
+    """
 
-#     resources = [(constants.InterfaceType.vxi, "BACKPLANE")]
+    resources = [(constants.InterfaceType.vxi, "BACKPLANE")]
 
-#     py_name = ""
+    py_name = ""
 
-#     visa_name = "VI_ATTR_INTF_PARENT_NUM"
+    visa_name = "VI_ATTR_INTF_PARENT_NUM"
 
-#     visa_type = "ViUInt16"
+    visa_type = "ViUInt16"
 
-#     default = NotAvailable
+    default = NotAvailable
 
-#     read, write, local = True, False, False
+    read, write, local = True, False, False
 
-#     min_value, max_value, values = 0, 65535, None
+    min_value, max_value, values = 0, 65535, None
 
 
 class AttrVI_ATTR_VXI_DEV_CLASS(EnumAttribute):
@@ -3685,7 +3729,7 @@ class _AttrVI_ATTR_PXI_MEM_SIZE_BARX(RangeAttribute):
 
 
 mod = sys.modules[__name__]
-for i in range(0, 5):
+for i in range(0, 6):
     setattr(
         mod,
         f"AttrVI_ATTR_PXI_MEM_TYPE_BAR{i}",
@@ -3698,7 +3742,7 @@ for i in range(0, 5):
 
     setattr(
         mod,
-        f"AttrVI_ATTR_PXI_MEM_TYPE_BAR{i}",
+        f"AttrVI_ATTR_PXI_MEM_BASE_BAR{i}",
         type(
             f"AttrVI_ATTR_PXI_MEM_BASE_BAR{i}",
             (_AttrVI_ATTR_PXI_MEM_BASE_BARX,),
@@ -3708,7 +3752,7 @@ for i in range(0, 5):
 
     setattr(
         mod,
-        f"AttrVI_ATTR_PXI_MEM_TYPE_BAR{i}",
+        f"AttrVI_ATTR_PXI_MEM_SIZE_BAR{i}",
         type(
             f"AttrVI_ATTR_PXI_MEM_SIZE_BAR{i}",
             (_AttrVI_ATTR_PXI_MEM_SIZE_BARX,),

@@ -3,7 +3,7 @@
 
 This file is part of PyVISA.
 
-:copyright: 2019-2020 by PyVISA Authors, see AUTHORS for more details.
+:copyright: 2019-2022 by PyVISA Authors, see AUTHORS for more details.
 :license: MIT, see LICENSE for more details.
 
 """
@@ -49,8 +49,6 @@ def visa_main(command: Optional[str] = None) -> None:
         util.get_debug_info()
     elif args.command == "shell":
         from pyvisa import shell
-
-        shell.main("@" + args.backend if args.backend else "")
 
         shell.main("@" + args.backend if args.backend else "")
     else:

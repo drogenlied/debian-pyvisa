@@ -8,10 +8,10 @@ PyVISA
 .. image:: https://github.com/pyvisa/pyvisa/workflows/Documentation%20building/badge.svg
     :target: https://github.com/pyvisa/pyvisa/actions
     :alt: Documentation building
-.. image:: https://dev.azure.com/pyvisa/pyvisa/_apis/build/status/pyvisa.keysight-assisted?branchName=master
+.. image:: https://dev.azure.com/pyvisa/pyvisa/_apis/build/status/pyvisa.keysight-assisted?branchName=main
     :target: https://dev.azure.com/pyvisa/pyvisa/_build
     :alt: Keysight assisted testing
-.. image:: https://codecov.io/gh/pyvisa/pyvisa/branch/master/graph/badge.svg
+.. image:: https://codecov.io/gh/pyvisa/pyvisa/branch/main/graph/badge.svg
     :target: https://codecov.io/gh/pyvisa/pyvisa
     :alt: Code Coverage
 .. image:: https://readthedocs.org/projects/pyvisa/badge/?version=latest
@@ -37,7 +37,7 @@ different protocols, sent over many different interfaces and bus systems
 find libraries that support both your device and its bus system.
 
 In order to ease this unfortunate situation, the Virtual Instrument Software
-Architecture (VISA_) specification was defined in the middle of the 90'. Today
+Architecture (VISA_) specification was defined in the middle of the 90's. Today
 VISA is implemented on all significant operating systems. A couple of vendors
 offer VISA libraries, partly with free download. These libraries work together
 with arbitrary peripheral devices, although they may be limited to certain
@@ -61,13 +61,13 @@ can also serve as a front-end for other VISA implementation such as
 VISA and Python
 ---------------
 
-Python has a couple of features that make it very interesting for measurement
-controlling:
+Python has a couple of features that make it very interesting for controlling 
+instruments:
 
 - Python is an easy-to-learn scripting language with short development cycles.
 - It represents a high abstraction level [2], which perfectly blends with the
   abstraction level of measurement programs.
-- It has a very rich set of native libraries, including numerical and plotting
+- It has a rich set of native libraries, including numerical and plotting
   modules for data analysis and visualisation.
 - A large set of books (in many languages) and on-line publications is
   available.

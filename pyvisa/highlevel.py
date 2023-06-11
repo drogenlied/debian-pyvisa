@@ -3,7 +3,7 @@
 
 This file is part of PyVISA.
 
-:copyright: 2014-2020 by PyVISA Authors, see AUTHORS for more details.
+:copyright: 2014-2022 by PyVISA Authors, see AUTHORS for more details.
 :license: MIT, see LICENSE for more details.
 
 """
@@ -50,7 +50,7 @@ from .typing import (
     VISARMSession,
     VISASession,
 )
-from .util import LibraryPath
+from .util import DebugInfo, LibraryPath
 
 if TYPE_CHECKING:
     from .resources import Resource  # pragma: no cover
@@ -89,7 +89,7 @@ class VisaLibraryBase(object):
     to the underlying devices providing Pythonic wrappers to VISA functions. But not all
     derived class must/will implement all methods. Even if methods are expected to return
     the status code they are expected to raise the appropriate exception when an error
-    ocurred since this is more Pythonic.
+    occurred since this is more Pythonic.
 
     The default VisaLibrary class is :class:`pyvisa.ctwrapper.highlevel.IVIVisaLibrary`,
     which implements a ctypes wrapper around the IVI-VISA library.
@@ -127,7 +127,7 @@ class VisaLibraryBase(object):
     #: Maps session handle to warnings to ignore.
     _ignore_warning_in_session: Dict[int, set]
 
-    #: Extra inforatoion used for logging errors
+    #: Extra information used for logging errors
     _logging_extra: Dict[str, str]
 
     #: Contains all installed event handlers.
@@ -210,7 +210,7 @@ class VisaLibraryBase(object):
         return ()
 
     @staticmethod
-    def get_debug_info() -> Union[Iterable[str], Dict[str, Union[str, Dict[str, Any]]]]:
+    def get_debug_info() -> DebugInfo:
         """Override to return an iterable of lines with the backend debug details."""
         return ["Does not provide debug info"]
 
@@ -865,7 +865,7 @@ class VisaLibraryBase(object):
         ----------
         session : VISASession
             Unique logical identifier to a session.
-        event_type : constans.EventType
+        event_type : constants.EventType
             Logical event identifier.
         mechanism : constants.EventMechanism
             Specifies event handling mechanisms to be discarded.
@@ -2806,26 +2806,14 @@ class PyVISAModule(ModuleType):
 
 
 def get_wrapper_class(backend_name: str) -> Type[VisaLibraryBase]:
-    """Return the WRAPPER_CLASS for a given backend.
-
-    backend_name == 'ni' is used for backwards compatibility
-    and will be removed in 1.12.
-
-    """
+    """Return the WRAPPER_CLASS for a given backend."""
     try:
         return _WRAPPERS[backend_name]
     except KeyError:
-        if backend_name == "ivi" or backend_name == "ni":
+        if backend_name == "ivi":
             from .ctwrapper import IVIVisaLibrary
 
             _WRAPPERS["ivi"] = IVIVisaLibrary
-            if backend_name == "ni":
-                warnings.warn(
-                    "@ni backend name is deprecated and will be "
-                    "removed in 1.12. Use @ivi instead. "
-                    "Check the documentation for details",
-                    FutureWarning,
-                )
             return IVIVisaLibrary
 
     pkg: PyVISAModule
@@ -2834,20 +2822,7 @@ def get_wrapper_class(backend_name: str) -> Type[VisaLibraryBase]:
         _WRAPPERS[backend_name] = cls = pkg.WRAPPER_CLASS
         return cls
     except ImportError:
-        try:
-            pkg = cast(PyVISAModule, import_module("pyvisa-" + backend_name))
-            _WRAPPERS[backend_name] = cls = pkg.WRAPPER_CLASS
-            warnings.warn(
-                "Backends packages should use an _ rather than a - ."
-                "Project can/should keep using a - (like pytest plugins)."
-                "Support for backends with - will be removed in 1.12",
-                FutureWarning,
-            )
-            return cls
-        except ImportError:
-            raise ValueError(
-                "Wrapper not found: No package named pyvisa_%s" % backend_name
-            )
+        raise ValueError("Wrapper not found: No package named pyvisa_%s" % backend_name)
 
 
 def _get_default_wrapper() -> str:
@@ -2933,7 +2908,7 @@ def open_visa_library(specification: str = "") -> VisaLibraryBase:
 
 
 class ResourceManager(object):
-    """VISA Resource Manager. """
+    """VISA Resource Manager."""
 
     #: Maps (Interface Type, Resource Class) to Python class encapsulating that resource.
     _resource_classes: ClassVar[
@@ -2963,10 +2938,10 @@ class ResourceManager(object):
 
         Parameters
         ----------
-        interface_type : constants.InterfaceTyp
+        interface_type : constants.InterfaceType
             Interface type for which to use the provided class.
         resource_class : str
-            Resource class (INSTR, INTFC, ...)  for which to use teh povided class.
+            Resource class (INSTR, INTFC, ...)  for which to use the provided class.
         python_class : Type[Resource]
             Subclass of ``Resource`` to use when opening a resource matching the
             specified interface type and resource class.
@@ -2980,7 +2955,9 @@ class ResourceManager(object):
 
         # If the class already has this attribute, it means that a parent class
         # was registered first. We need to copy the current set and extend it.
-        attrs = copy.copy(getattr(python_class, "visa_attributes_classes", set()))
+        attrs: Set[Type[attributes.Attribute]] = copy.copy(
+            getattr(python_class, "visa_attributes_classes", set())
+        )
 
         for attr in chain(
             attributes.AttributesPerResource[(interface_type, resource_class)],
@@ -3266,7 +3243,6 @@ class ResourceManager(object):
             Subclass of Resource matching the resource.
 
         """
-
         if resource_pyclass is None:
             info = self.resource_info(resource_name, extended=True)
 
@@ -3284,76 +3260,32 @@ class ResourceManager(object):
                     "There is no class defined for %r. Using Resource",
                     (info.interface_type, info.resource_class),
                 )
+        if hasattr(self.visalib, "open_resource"):
+            res = self.visalib.open_resource(  # type: ignore
+                resource_name, access_mode, open_timeout, resource_pyclass, **kwargs
+            )
+        else:
+            res = resource_pyclass(self, resource_name)
+            for key in kwargs.keys():
+                try:
+                    getattr(res, key)
+                    present = True
+                except AttributeError:
+                    present = False
+                except errors.InvalidSession:
+                    present = True
 
-        res = resource_pyclass(self, resource_name)
-        for key in kwargs.keys():
-            try:
-                getattr(res, key)
-                present = True
-            except AttributeError:
-                present = False
-            except errors.InvalidSession:
-                present = True
+                if not present:
+                    raise ValueError(
+                        "%r is not a valid attribute for type %s"
+                        % (key, res.__class__.__name__)
+                    )
 
-            if not present:
-                raise ValueError(
-                    "%r is not a valid attribute for type %s"
-                    % (key, res.__class__.__name__)
-                )
+            res.open(access_mode, open_timeout)
 
-        res.open(access_mode, open_timeout)
-
-        for key, value in kwargs.items():
-            setattr(res, key, value)
+            for key, value in kwargs.items():
+                setattr(res, key, value)
 
         self._created_resources.add(res)
 
         return res
-
-    def get_instrument(
-        self,
-        resource_name: str,
-        access_mode: constants.AccessModes = constants.AccessModes.no_lock,
-        open_timeout: int = constants.VI_TMO_IMMEDIATE,
-        resource_pyclass: Type["Resource"] = None,
-        **kwargs: Any,
-    ) -> "Resource":
-        """Return an instrument for the resource name.
-
-        .. warning::
-            get_instrument is deprecated and will be removed in 1.12,
-            use open_resource instead."
-
-        Parameters
-        ----------
-        resource_name : str
-            Name or alias of the resource to open.
-        access_mode : constants.AccessModes, optional
-            Specifies the mode by which the resource is to be accessed,
-            by default constants.AccessModes.no_lock
-        open_timeout : int, optional
-            If the ``access_mode`` parameter requests a lock, then this
-            parameter specifies the absolute time period (in milliseconds) that
-            the resource waits to get unlocked before this operation returns an
-            error, by default constants.VI_TMO_IMMEDIATE.
-        resource_pyclass : Optional[Type[Resource]], optional
-            Resource Python class to use to instantiate the Resource.
-            Defaults to None: select based on the resource name.
-        kwargs : Any
-            Keyword arguments to be used to change instrument attributes
-            after construction.
-
-        Returns
-        -------
-        Resource
-            Subclass of Resource matching the resource.
-
-        """
-        warnings.warn(
-            "get_instrument is deprecated and will be removed in "
-            "1.12, use open_resource instead.",
-            FutureWarning,
-        )
-        return self.open_resource(
-            resource_name, access_mode, open_timeout, resource_pyclass, **kwargs
-        )
