@@ -1,4 +1,5 @@
 #!/usr/bin/make -f
+export PYBUILD_NAME=pyvisa
 
 %:
 	dh $@ --with python3 --buildsystem=pybuild
