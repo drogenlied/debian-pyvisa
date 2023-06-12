@@ -1,17 +1,21 @@
-Index: pyvisa/setup.py
+Index: pyvisa/pyproject.toml
 ===================================================================
---- pyvisa.orig/setup.py
-+++ pyvisa/setup.py
-@@ -4,4 +4,11 @@
- from setuptools import setup
+--- pyvisa.orig/pyproject.toml
++++ pyvisa/pyproject.toml
+@@ -58,6 +58,16 @@ pyvisa-info = "pyvisa.cmd_line_tools:vis
+ requires = ["setuptools>=61.2", "wheel", "setuptools_scm[toml]>=3.4.3"]
+ build-backend = "setuptools.build_meta"
  
- if __name__ == "__main__":
--    setup(use_scm_version=True)
-+    setup(use_scm_version=True, packages=[
-+        'pyvisa',
-+        'pyvisa.ctwrapper',
-+        'pyvisa.resources',
-+        'pyvisa.testsuite',
-+        'pyvisa.testsuite.keysight_assisted_tests',
-+        'pyvisa.thirdparty',
-+        ])
++[tool.setuptools]
++packages=[
++    'pyvisa',
++    'pyvisa.ctwrapper',
++    'pyvisa.resources',
++    'pyvisa.testsuite',
++    'pyvisa.testsuite.keysight_assisted_tests',
++    'pyvisa.thirdparty',
++]
++
+ [tool.setuptools_scm]
+ write_to = "pyvisa/version.py"
+ write_to_template = """
