@@ -10,7 +10,7 @@ Index: pyvisa/pyvisa/testsuite/test_cmd_line_tools.py
 ===================================================================
 --- pyvisa.orig/pyvisa/testsuite/test_cmd_line_tools.py
 +++ pyvisa/pyvisa/testsuite/test_cmd_line_tools.py
-@@ -26,18 +26,3 @@ class TestCmdLineTools(BaseTestCase):
+@@ -27,22 +27,6 @@ class TestCmdLineTools(BaseTestCase):
          finally:
              sys.argv = old
  
@@ -29,3 +29,7 @@ Index: pyvisa/pyvisa/testsuite/test_cmd_line_tools.py
 -        with Popen(["pyvisa-shell"], stdin=PIPE, stdout=PIPE) as p:
 -            stdout, stderr = p.communicate(b"exit")
 -        assert stdout.count(b"Welcome to the VISA shell") == 1
+-
+ 
+ @pytest.mark.parametrize(
+     "args, want",
