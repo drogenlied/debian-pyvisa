@@ -52,7 +52,7 @@ class TestRegisteringSubclass(BaseTestCase):
             rname.register_subclass(rname.GPIBInstr)
         assert "Class already registered for" in e.exconly()
 
-    def test_handling_duplicate_default(self):
+    def test_handling_duplicate_default(self) -> None:
         """Test we enforce the unicity of default resource class per interface."""
         with pytest.raises(ValueError) as e:
 
@@ -254,7 +254,6 @@ class TestParsers(BaseTestCase):
         )
 
     def test_tcpip_intr(self):
-
         self._parse_test(
             "TCPIP::192.168.134.102",
             interface_type="TCPIP",
@@ -296,14 +295,13 @@ class TestParsers(BaseTestCase):
         )
 
     def test_vicp_intr(self):
-
         self._parse_test(
             "VICP::192.168.134.102",
             interface_type="VICP",
             resource_class="INSTR",
             host_address="192.168.134.102",
-            board="0",
-            canonical_resource_name="VICP0::192.168.134.102::INSTR",
+            _unused=None,
+            canonical_resource_name="VICP::192.168.134.102::INSTR",
         )
 
         self._parse_test(
@@ -311,26 +309,26 @@ class TestParsers(BaseTestCase):
             interface_type="VICP",
             resource_class="INSTR",
             host_address="dev.company.com",
-            board="0",
-            canonical_resource_name="VICP0::dev.company.com::INSTR",
+            _unused=None,
+            canonical_resource_name="VICP::dev.company.com::INSTR",
         )
 
         self._parse_test(
-            "VICP3::dev.company.com::INSTR",
+            "VICP::dev.company.com::INSTR",
             interface_type="VICP",
             resource_class="INSTR",
             host_address="dev.company.com",
-            board="3",
-            canonical_resource_name="VICP3::dev.company.com::INSTR",
+            _unused=None,
+            canonical_resource_name="VICP::dev.company.com::INSTR",
         )
 
         self._parse_test(
-            "VICP3::1.2.3.4::INSTR",
+            "VICP::1.2.3.4::INSTR",
             interface_type="VICP",
             resource_class="INSTR",
             host_address="1.2.3.4",
-            board="3",
-            canonical_resource_name="VICP3::1.2.3.4::INSTR",
+            _unused=None,
+            canonical_resource_name="VICP::1.2.3.4::INSTR",
         )
 
     def test_tcpip_socket(self):
@@ -466,7 +464,6 @@ class TestParsers(BaseTestCase):
 
 
 class TestFilters(BaseTestCase):
-
     CHECK_NO_WARNING = False
 
     run_list = (

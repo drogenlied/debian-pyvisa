@@ -2053,8 +2053,9 @@ class VisaLibraryBase(object):
                 else parsed.interface  # type: ignore
             )
         # In some cases the board number may not be convertible to an int
-        # PyVISA-py serial resources on Linux for example
-        except ValueError:
+        # PyVISA-py serial resources on Linux for example. For VICP, there is
+        # no such attribute.
+        except (ValueError, AttributeError):
             board_number = None
 
         return (
@@ -2801,7 +2802,6 @@ _WRAPPERS: Dict[str, Type[VisaLibraryBase]] = {}
 
 
 class PyVISAModule(ModuleType):
-
     WRAPPER_CLASS: Type[VisaLibraryBase]
 
 
@@ -3064,7 +3064,15 @@ class ResourceManager(object):
         return self.visalib.get_last_status_in_session(self.session)
 
     def close(self) -> None:
-        """Close the resource manager session."""
+        """Close the resource manager session.
+
+        Notes
+        -----
+        Since the resource manager session is shared between instances
+        this will also terminate connections obtained from other
+        ResourceManager instances.
+
+        """
         atexit.unregister(self._atexit_handler)
         try:
             logger.debug("Closing ResourceManager (session: %s)", self.session)
